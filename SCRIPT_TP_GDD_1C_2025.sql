@@ -1,3 +1,4 @@
+--23 tablas
 
 CREATE SCHEMA QUERYOSOS
 
@@ -147,22 +148,9 @@ estado NVarchar(255),
 idPedido Integer
 )
 
-Create Table ItemDetallefactura(nroFactura Integer,
-estado NVarchar(255),
-idPedido Integer
+Create Table ItemDetallefactura(nroFactura BigInt,
+id_item_pedido Integer,
+detalle_factura_precio decimal(18,2)
+detalle_factura_cantidad decimal(18,0)
+detalle_factura_subtotal decimal(18,2)
 )
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
