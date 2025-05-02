@@ -13,8 +13,8 @@ motivoCancelacion Varchar(255))
 )
 
 CREATE TABLE ItemDetallePedido (id_item_pedido Integer,
-idPedido Integer,
-idSillon Integer,
+nroDePedido decimal(18,0),
+sillonCodigo BigInt,
 cantidad_pedido BigInt,
 subtotal decimal(18,2),
 precioUnitario decimal(18,2),
