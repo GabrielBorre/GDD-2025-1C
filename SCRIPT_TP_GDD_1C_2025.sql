@@ -71,7 +71,7 @@ cuit NVarchar(255)
 
 CREATE TABLE Sillon (SillonCodigo BigInt,
 precioUnitario decimal(18,2),
-idModeloSillon Integer,
+SillonModeloCodigo BigInt,
 idMedidaSillon Integer,
 codigo BigInt
 )
