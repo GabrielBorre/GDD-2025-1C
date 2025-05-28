@@ -159,11 +159,11 @@ idMaterial Integer
 
 Create Table QUERYOSOS.Proveedor (
 idProveedor Integer IDENTITY(1,1) Constraint PK_Proveedor PRIMARY KEY,
-mail NVarchar(255),
-telefono NVarchar(255),
+mail NVarchar(255) not null,
+telefono NVarchar(255) not null,
 idDireccion Integer,
-razonSocial NVarchar(255),
-cuit NVarchar(255)
+razonSocial NVarchar(255) not null,
+cuit NVarchar (255) not null
 )
 
 CREATE TABLE QUERYOSOS.Sillon (
@@ -333,13 +333,19 @@ FOREIGN KEY (nroDeFactura) REFERENCES QUERYOSOS.Factura(nroFactura);
 
 --FOREIGN KEYS PARA Compra
 
+
+
 ALTER TABLE QUERYOSOS.Compra
 ADD CONSTRAINT FK_Compra_Sucursal
 FOREIGN KEY (idSucursal) REFERENCES QUERYOSOS.Sucursal(idSucursal);
 
+
+
 ALTER TABLE QUERYOSOS.Compra
 ADD CONSTRAINT FK_Compra_Proveedor
 FOREIGN KEY (idProveedor) REFERENCES QUERYOSOS.Proveedor(idProveedor);
+
+
 
 --FOREIGN KEYS PARA DetalleCompra
 
@@ -442,6 +448,8 @@ DROP PROCEDURE IF EXISTS Migrar_Sucursal
 DROP PROCEDURE IF EXISTS Migrar_Cliente
 DROP PROCEDURE IF EXISTS Migrar_Proveedor
 DROP PROCEDURE IF EXISTS Migrar_Pedido
+DROP PROCEDURE IF EXISTS Migrar_Compra
+DROP PROCEDURE IF EXISTS Migrar_Factura
 DROP PROCEDURE IF EXISTS Migrar_Modelo_Sillon
 DROP PROCEDURE IF EXISTS Migrar_Medida_Sillon
 DROP PROCEDURE IF EXISTS Migrar_Material
@@ -652,6 +660,7 @@ END
 
 GO
 
+
 ---MIGRAMOS LOS PROVEEDORES
 
 CREATE PROCEDURE Migrar_Proveedor
@@ -694,7 +703,49 @@ END
 GO
 
 
+--------------------------------------
+------MIGRAMOS LAS COMPRAS------------
+-------------------------------------
 
+
+
+CREATE PROCEDURE Migrar_Compra
+AS 
+BEGIN
+	INSERT INTO QUERYOSOS.Compra(nroDeCompra,idSucursal,idProveedor,fechaCompra,total_compra)
+	SELECT DISTINCT m.Compra_Numero,s1.idSucursal,p1.idProveedor,m.Compra_Fecha,m.Compra_Total
+	FROM gd_esquema.Maestra m JOIN Queryosos.Proveedor p1 on 
+	m.Proveedor_Cuit=p1.cuit and m.Proveedor_Mail=p1.mail and p1.telefono=m.Proveedor_Telefono LEFT JOIN  QUERYOSOS.Sucursal s1 on m.Sucursal_NroSucursal=s1.numeroSucursal
+	and m.Sucursal_mail=s1.mail and m.Sucursal_telefono=s1.telefono 
+	where m.Compra_Numero is not null
+END
+
+GO
+
+--------------------------------------
+------MIGRAMOS LAS FACTURAS------------
+-------------------------------------
+
+
+CREATE PROCEDURE Migrar_Factura
+AS 
+BEGIN
+	INSERT INTO QUERYOSOS.Factura(nroFactura,idCliente,idSucursal,fechaYHora,importeTotal)
+	SELECT DISTINCT m.Factura_Numero,c.idCliente,s.idSucursal,m.Factura_Fecha,m.Factura_Total
+	 FROM gd_esquema.Maestra m JOIN QUERYOSOS.Cliente c on m.Cliente_Nombre=c.nombre and m.Cliente_Apellido=c.apellido
+	and m.Cliente_FechaNacimiento=c.fechaNacimiento and c.mail=m.Cliente_Mail and c.nroDocumento=m.Cliente_Dni 
+	and c.telefono=m.Cliente_Telefono JOIN QUERYOSOS.Direccion d on d.direccion=m.Cliente_Direccion JOIN Queryosos.Localidad l
+	on Cliente_Localidad=l.nombre and d.idLocalidad=l.idLocalidad and c.idDireccion=d.idDireccion JOIN QUERYOSOS.Sucursal s on m.Sucursal_NroSucursal=s.numeroSucursal JOIN QUERYOSOS.Direccion d2 ON m.Sucursal_Direccion=d2. direccion and 
+	d2.idDireccion=s.idDireccion 
+	where Detalle_Factura_Cantidad is null and m.Factura_Numero is not null
+
+END
+GO
+
+
+--------------------------------------
+------MIGRAMOS LOS ENVIOS------------
+-------------------------------------
 
 
 
@@ -838,10 +889,6 @@ go
 */
 
 
-
-
-
-
 EXEC Migrar_Provincia
 EXEC Migrar_Localidad
 EXEC Migrar_Direccion
@@ -849,6 +896,8 @@ EXEC Migrar_Sucursal
 EXEC Migrar_Cliente
 EXEC Migrar_Proveedor
 EXEC Migrar_Pedido
+EXEC Migrar_Compra
+EXEC Migrar_Factura
 EXEC Migrar_Modelo_Sillon
 EXEC Migrar_Medida_Sillon
 EXEC Migrar_Material
