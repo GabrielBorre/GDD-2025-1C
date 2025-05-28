@@ -235,7 +235,8 @@ UNIQUE(idLocalidad,direccion)
 Create Table QUERYOSOS.Localidad(
 idLocalidad Integer IDENTITY(1,1) Constraint PK_Localidad PRIMARY KEY,
 nombre NVarchar(255) not null,
-idProvincia Integer
+idProvincia Integer,
+UNIQUE (nombre,idProvincia)
 )
 
 Create Table QUERYOSOS.Provincia(
@@ -617,6 +618,8 @@ GO
 
 
 
+
+
 --MIGRAMOS LAS SUCURSALES--
 
 CREATE PROCEDURE Migrar_Sucursal
@@ -628,7 +631,7 @@ BEGIN
 	FROM gd_esquema.Maestra m
 	JOIN QUERYOSOS.Direccion d on m.Sucursal_Direccion=d.direccion JOIN
 	QUERYOSOS.Localidad l on l.nombre=m.Sucursal_Localidad and d.idLocalidad=l.idLocalidad
-	WHERE m.Sucursal_NroSucursal is not null
+	JOIN QUERYOSOS.Provincia p on p.nombre=m.Sucursal_Provincia and p.idProvincia=l.idProvincia
 END
 
 --MIGRAMOS LOS CLIENTES--
@@ -644,10 +647,8 @@ BEGIN
 	FROM gd_esquema.Maestra m
 	JOIN QUERYOSOS.Direccion d on m.Cliente_Direccion=d.direccion JOIN
 	QUERYOSOS.Localidad l on l.nombre=m.Cliente_Localidad and d.idLocalidad=l.idLocalidad
-
+	JOIN QUERYOSOS.Provincia p on p.nombre=m.Cliente_Provincia and p.idProvincia=l.idProvincia 
 END
-
-
 
 GO
 
@@ -661,9 +662,9 @@ BEGIN
 	FROM gd_esquema.Maestra m
 	JOIN QUERYOSOS.Direccion d on m.Proveedor_Direccion=d.direccion JOIN
 	QUERYOSOS.Localidad l on l.nombre=m.Proveedor_Localidad and d.idLocalidad=l.idLocalidad
+	JOIN QUERYOSOS.Provincia p on m.Proveedor_Provincia=p.nombre and l.idProvincia=p.idProvincia 
 
 END
-
 
 
 GO
@@ -674,31 +675,38 @@ GO
 ------MIGRAMOS LOS PEDIDOS 
 
 
-/*
+
 
 CREATE PROCEDURE Migrar_Pedido
 AS 
 BEGIN
-	INSERT INTO  QUERYOSOS.Pedido(nroDePedido,fechaCancelacion,precioTotal,idCliente,estadoActual,idSucursal,idMotivoCancelacion)
-	SELECT DISTINCT Pedido_Numero,Pedido_Cancelacion_Fecha,Pedido_Total,c.idCliente,e.idEstado,s.idSucursal,mot.id_motivo_cancelacion
+	INSERT INTO  QUERYOSOS.Pedido(nroDePedido,fechaCancelacion,precioTotal,idCliente,estadoActual,idSucursal,idMotivoCancelacion,fechaYHora)
+	SELECT DISTINCT Pedido_Numero,Pedido_Cancelacion_Fecha,Pedido_Total,c.idCliente,e.idEstado,s.idSucursal,mot.id_motivo_cancelacion,m.Pedido_Fecha
 	FROM gd_esquema.Maestra m JOIN QUERYOSOS.Cliente c on m.Cliente_Nombre=c.nombre and m.Cliente_Apellido=c.apellido
 	and m.Cliente_FechaNacimiento=c.fechaNacimiento and c.mail=m.Cliente_Mail and c.nroDocumento=m.Cliente_Dni 
 	and c.telefono=m.Cliente_Telefono JOIN QUERYOSOS.Direccion d on d.direccion=m.Cliente_Direccion JOIN Queryosos.Localidad l
 	on Cliente_Localidad=l.nombre and d.idLocalidad=l.idLocalidad and c.idDireccion=d.idDireccion JOIN QUERYOSOS.Estado e on m.Pedido_Estado=e.estado
 	JOIN QUERYOSOS.Sucursal s on m.Sucursal_NroSucursal=s.numeroSucursal JOIN QUERYOSOS.Direccion d2 ON m.Sucursal_Direccion=d2. direccion and 
 	d2.idDireccion=s.idDireccion  LEFT JOIN QUERYOSOS.Motivo_cancelacion_pedido mot on m.Pedido_Cancelacion_Motivo=mot.nombre
-	where m.Pedido_Numero is not null and m.Detalle_Pedido_Cantidad is null
+	where Detalle_Pedido_Cantidad is null
 END
-
 
 GO
 
-*/
+
+
+
+
+
+
+
 
 ---------------------------------------
 ----MIGRAMOS LOS MODELOS DE SILLONES-----
 ---------------------------------------
 
+
+go
 CREATE PROCEDURE Migrar_Modelo_Sillon
 AS
 BEGIN
@@ -832,13 +840,15 @@ go
 
 
 
+
+
 EXEC Migrar_Provincia
 EXEC Migrar_Localidad
 EXEC Migrar_Direccion
 EXEC Migrar_Sucursal
 EXEC Migrar_Cliente
 EXEC Migrar_Proveedor
---EXEC Migrar_Pedido
+EXEC Migrar_Pedido
 EXEC Migrar_Modelo_Sillon
 EXEC Migrar_Medida_Sillon
 EXEC Migrar_Material
@@ -847,7 +857,6 @@ EXEC Migrar_Madera
 EXEC Migrar_Relleno
 EXEC Migrar_Sillon
 EXEC Migrar_Material_Sillon
-
 
 
 
