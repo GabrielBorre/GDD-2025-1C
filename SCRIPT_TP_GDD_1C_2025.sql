@@ -1,5 +1,6 @@
+USE GD1C2025;
+GO
 
-USE GD1C2025
 
 ------------------------------------------------------------------------------------------------
 ----- DROPEO DE TABLAS (respetar orden establecido) -----
@@ -83,10 +84,6 @@ BEGIN EXEC ('CREATE SCHEMA QUERYOSOS')
 END
 GO
 
-
-
-
-
 --CREACION DE TABLAS Y DE SUS RESPECTIVAS PRIMARY KEYS
 
 CREATE TABLE QUERYOSOS.Pedido(
@@ -99,7 +96,7 @@ idSucursal Integer,
 fechaCancelacion DateTime2(6), 
 idMotivoCancelacion Integer
 )
-
+GO
 
 
 CREATE TABLE QUERYOSOS.ItemDetallePedido (
@@ -108,7 +105,7 @@ nroDePedido decimal(18,0),
 sillonCodigo BigInt,
 cantidad_pedido BigInt,
 subtotal decimal(18,2),
-precioUnitario decimal(18,2),
+precioUnitario decimal(18,2)
 )
 
 CREATE TABLE QUERYOSOS.Factura (
@@ -458,6 +455,7 @@ DROP PROCEDURE IF EXISTS Migrar_Madera
 DROP PROCEDURE IF EXISTS Migrar_Relleno
 DROP PROCEDURE IF EXISTS Migrar_Sillon
 DROP PROCEDURE IF EXISTS Migrar_Material_Sillon
+DROP PROCEDURE IF EXISTS Migrar_Item_Detalle_Pedido
 GO
 
 
@@ -604,6 +602,7 @@ BEGIN
           WHERE d.direccion = m.Proveedor_Direccion AND d.idLocalidad = l.idLocalidad
       );
 END;
+GO
 ----------------------------------------------
 --Migracion de Motivo de Cancelacion del Pedido
 ----------------------------------------------
@@ -611,7 +610,7 @@ INSERT INTO Queryosos.Motivo_cancelacion_pedido (nombre)
 SELECT DISTINCT Pedido_Cancelacion_Motivo
 from gd_esquema.Maestra
 where Pedido_Cancelacion_Motivo is not null
-
+GO
 
 -----------------------------------
 --Migracion de Estados del Pedido
@@ -644,7 +643,6 @@ END
 
 --MIGRAMOS LOS CLIENTES--
 GO
-
 
 CREATE PROCEDURE Migrar_Cliente
 AS 
@@ -683,23 +681,56 @@ GO
 
 ------MIGRAMOS LOS PEDIDOS 
 
-
-
-
-CREATE PROCEDURE Migrar_Pedido
-AS 
+CREATE OR ALTER PROCEDURE Migrar_Pedido
+AS
 BEGIN
-	INSERT INTO  QUERYOSOS.Pedido(nroDePedido,fechaCancelacion,precioTotal,idCliente,estadoActual,idSucursal,idMotivoCancelacion,fechaYHora)
-	SELECT DISTINCT Pedido_Numero,Pedido_Cancelacion_Fecha,Pedido_Total,c.idCliente,e.idEstado,s.idSucursal,mot.id_motivo_cancelacion,m.Pedido_Fecha
-	FROM gd_esquema.Maestra m JOIN QUERYOSOS.Cliente c on m.Cliente_Nombre=c.nombre and m.Cliente_Apellido=c.apellido
-	and m.Cliente_FechaNacimiento=c.fechaNacimiento and c.mail=m.Cliente_Mail and c.nroDocumento=m.Cliente_Dni 
-	and c.telefono=m.Cliente_Telefono JOIN QUERYOSOS.Direccion d on d.direccion=m.Cliente_Direccion JOIN Queryosos.Localidad l
-	on Cliente_Localidad=l.nombre and d.idLocalidad=l.idLocalidad and c.idDireccion=d.idDireccion JOIN QUERYOSOS.Estado e on m.Pedido_Estado=e.estado
-	JOIN QUERYOSOS.Sucursal s on m.Sucursal_NroSucursal=s.numeroSucursal JOIN QUERYOSOS.Direccion d2 ON m.Sucursal_Direccion=d2. direccion and 
-	d2.idDireccion=s.idDireccion  LEFT JOIN QUERYOSOS.Motivo_cancelacion_pedido mot on m.Pedido_Cancelacion_Motivo=mot.nombre
-	where Detalle_Pedido_Cantidad is null
-END
-
+  INSERT INTO QUERYOSOS.Pedido
+    ( nroDePedido
+    , fechaCancelacion
+    , precioTotal
+    , idCliente
+    , estadoActual
+    , idSucursal
+    , idMotivoCancelacion
+    , fechaYHora
+    )
+  SELECT DISTINCT
+    m.Pedido_Numero,
+    m.Pedido_Cancelacion_Fecha,
+    m.Pedido_Total,
+    c.idCliente,
+    e.idEstado,
+    s.idSucursal,
+    mot.id_motivo_cancelacion,
+    m.Pedido_Fecha
+  FROM gd_esquema.Maestra AS m
+  INNER JOIN QUERYOSOS.Cliente AS c 
+    ON c.nombre       = m.Cliente_Nombre
+   AND c.apellido     = m.Cliente_Apellido
+   AND c.nroDocumento = m.Cliente_Dni
+   AND c.mail         = m.Cliente_Mail
+   AND c.telefono     = m.Cliente_Telefono
+  INNER JOIN QUERYOSOS.Direccion AS d1 
+    ON d1.direccion = m.Cliente_Direccion
+  INNER JOIN QUERYOSOS.Localidad AS l1 
+    ON l1.nombre      = m.Cliente_Localidad
+   AND l1.idProvincia = d1.idLocalidad
+  INNER JOIN QUERYOSOS.Estado AS e 
+    ON e.estado = m.Pedido_Estado
+  INNER JOIN QUERYOSOS.Sucursal AS s
+    ON s.numeroSucursal = m.Sucursal_NroSucursal
+  INNER JOIN QUERYOSOS.Direccion AS d2
+    ON d2.direccion = m.Sucursal_Direccion
+   AND d2.idDireccion = s.idDireccion
+  LEFT JOIN QUERYOSOS.Motivo_cancelacion_pedido AS mot
+    ON mot.nombre = m.Pedido_Cancelacion_Motivo
+  WHERE m.Pedido_Numero IS NOT NULL
+    AND NOT EXISTS (
+      SELECT 1
+        FROM QUERYOSOS.Pedido AS p2
+       WHERE p2.nroDePedido = m.Pedido_Numero
+    );
+END;
 GO
 
 
@@ -741,16 +772,11 @@ BEGIN
 
 END
 GO
-
+SELECT * FROM QUERYOSOS.ItemDetallePedido
 
 --------------------------------------
 ------MIGRAMOS LOS ENVIOS------------
 -------------------------------------
-
-
-
-
-
 
 ---------------------------------------
 ----MIGRAMOS LOS MODELOS DE SILLONES-----
@@ -775,7 +801,7 @@ AS
 BEGIN
 	INSERT INTO QUERYOSOS.Medida(ancho,profundidad,alto,precio)
 	SELECT DISTINCT m.Sillon_Medida_Ancho,Sillon_Medida_Profundidad,Sillon_Medida_Alto,Sillon_Medida_Precio  FROM gd_esquema.Maestra m
-	WHERE Sillon_Medida_Ancho is not null and Sillon_Medida_Alto is not null and Sillon_Medida_Ancho is not null
+	WHERE Sillon_Medida_Ancho is not null and Sillon_Medida_Alto is not null and Sillon_Medida_Profundidad is not null
 
 END
 go
@@ -852,11 +878,10 @@ BEGIN
 	SELECT DISTINCT m.Sillon_Codigo,m.Sillon_Modelo_Codigo,medida.idMedidaSillon, m.Sillon_Modelo_Precio+m.Sillon_Medida_Precio+sum(m.Material_Precio)
 	FROM gd_esquema.Maestra m JOIN QUERYOSOS.Medida medida on m.Sillon_Medida_Ancho=medida.ancho and m.Sillon_Medida_Precio=medida.precio
 	and m.Sillon_Medida_Alto=medida.alto and m.Sillon_Medida_Profundidad=medida.profundidad
-	Where m.Sillon_Codigo is not null and Sillon_Modelo_Codigo is not null
+	Where m.Sillon_Codigo is not null and m.Sillon_Modelo_Codigo is not null
 	GROUP BY m.Sillon_Codigo,m.Sillon_Modelo_Codigo,medida.idMedidaSillon,m.Sillon_Modelo_Precio,Sillon_Medida_Precio
 END
 go
-
 
 ----------------------------------------------------------------
 ----MIGRAMOS DATOS A LA TABLA INTERMEDIA Material_Sillon -----------
@@ -878,6 +903,34 @@ BEGIN
 END
 go
 
+----------------------------------------------------------------
+----MIGRAMOS DATOS A LA TABLA ItemDetallePedido -----------
+----------------------------------------------------------------
+CREATE PROCEDURE Migrar_Item_Detalle_Pedido
+AS
+BEGIN
+  INSERT INTO QUERYOSOS.ItemDetallePedido
+    ( nroDePedido
+    , sillonCodigo    
+    , cantidad_pedido
+    , subtotal
+    , precioUnitario
+    )
+  SELECT
+    m.Pedido_Numero,
+    s.idSillon,                      
+    m.Detalle_Compra_Cantidad,
+    m.Detalle_Compra_SubTotal,
+    m.Detalle_Pedido_Precio
+  FROM gd_esquema.Maestra AS m
+  INNER JOIN QUERYOSOS.Pedido AS p
+    ON p.nroDePedido = m.Pedido_Numero
+  INNER JOIN QUERYOSOS.Sillon AS s
+    ON s.SillonCodigo       = m.Sillon_Codigo
+   AND s.SillonModeloCodigo = m.Sillon_Modelo_Codigo;
+END;
+GO
+
 
 /*
 -----------------------------------------
@@ -888,7 +941,7 @@ go
 ------------------------------------
 */
 
-
+ 
 EXEC Migrar_Provincia
 EXEC Migrar_Localidad
 EXEC Migrar_Direccion
@@ -906,7 +959,7 @@ EXEC Migrar_Madera
 EXEC Migrar_Relleno
 EXEC Migrar_Sillon
 EXEC Migrar_Material_Sillon
-
+EXEC Migrar_Item_Detalle_Pedido
 
 
 
