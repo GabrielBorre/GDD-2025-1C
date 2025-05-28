@@ -1,6 +1,13 @@
 
 USE GD1C2025
 
+
+---Eliminamos al esquema o lo creamos si no existe-----------------------------
+IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = 'QUERYOSOS')
+BEGIN EXEC ('CREATE SCHEMA QUERYOSOS')
+END
+GO
+
 ------------------------------------------------------------------------------------------------
 ----- DROPEO DE TABLAS (respetar orden establecido) -----
 ------------------------------------------------------------------------------------------------
@@ -76,12 +83,8 @@ IF OBJECT_ID('QUERYOSOS.Provincia', 'U') IS NOT NULL
 
 
 
----Eliminamos al esquema-----------------------------
 
-IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = 'QUERYOSOS')
-BEGIN EXEC ('CREATE SCHEMA QUERYOSOS')
-END
-GO
+
 
 
 
@@ -105,7 +108,7 @@ idMotivoCancelacion Integer
 CREATE TABLE QUERYOSOS.ItemDetallePedido (
 id_item_pedido Integer Identity(1,1) CONSTRAINT PK_Item_Detalle_Pedido PRIMARY KEY,
 nroDePedido decimal(18,0),
-sillonCodigo BigInt,
+idSillon BigInt,
 cantidad_pedido BigInt,
 subtotal decimal(18,2),
 precioUnitario decimal(18,2),
@@ -303,7 +306,7 @@ FOREIGN KEY (nroDePedido) References QUERYOSOS.Pedido(nroDePedido)
 
 ALTER TABLE QUERYOSOS.ItemDetallePedido
 ADD CONSTRAINT FK_Item_Detalle_Pedido_Sillon
-FOREIGN KEY(SillonCodigo) REFERENCES QUERYOSOS.Sillon(idSillon)
+FOREIGN KEY(idSillon) REFERENCES QUERYOSOS.Sillon(idSillon)
 
 --FOREIGN KEYS PARA FACTURA
 
@@ -458,6 +461,7 @@ DROP PROCEDURE IF EXISTS Migrar_Madera
 DROP PROCEDURE IF EXISTS Migrar_Relleno
 DROP PROCEDURE IF EXISTS Migrar_Sillon
 DROP PROCEDURE IF EXISTS Migrar_Material_Sillon
+DROP PROCEDURE IF EXISTS Migrar_Envio
 GO
 
 
@@ -747,9 +751,15 @@ GO
 ------MIGRAMOS LOS ENVIOS------------
 -------------------------------------
 
-
-
-
+CREATE PROCEDURE Migrar_Envio
+AS
+BEGIN
+	INSERT INTO QUERYOSOS.Envio (nroDeEnvio,nroDeFactura,fechaProgramada,fechaYHoraEntrega,importeTraslado,importeSubida,envioTotal)
+	SELECT DISTINCT m.Envio_Numero,f.nroFactura,m.Envio_Fecha_Programada,m.Envio_Fecha,m.Envio_ImporteTraslado,m.Envio_importeSubida,m.Envio_Total
+	FROM gd_esquema.Maestra m join QUERYOSOS.Factura f on m.Factura_Numero=f.nroFactura 
+	where m.Envio_Numero is not null
+END 
+GO
 
 
 ---------------------------------------
@@ -879,15 +889,17 @@ END
 go
 
 
-/*
+
+----------------------------------------------------------------
+----MIGRAMOS DATOS A LA TABLA ITEM_DETALLE_PEDIDO -----------
+----------------------------------------------------------------
+
 -----------------------------------------
 -----------------------------------------
 ------EJECUTAMOS LOS PROCEDURES PARA HACER
--------EFECTIVAS LAS MIGRACIONES---------
+-------EFECTIVAS LAS MIGRACIONES (RESPETAR ORDEN)---------
 -----------------------------------------
 ------------------------------------
-*/
-
 
 EXEC Migrar_Provincia
 EXEC Migrar_Localidad
@@ -898,6 +910,7 @@ EXEC Migrar_Proveedor
 EXEC Migrar_Pedido
 EXEC Migrar_Compra
 EXEC Migrar_Factura
+EXEC Migrar_Envio
 EXEC Migrar_Modelo_Sillon
 EXEC Migrar_Medida_Sillon
 EXEC Migrar_Material
