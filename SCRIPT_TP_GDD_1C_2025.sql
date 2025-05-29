@@ -681,56 +681,20 @@ GO
 
 ------MIGRAMOS LOS PEDIDOS 
 
-CREATE OR ALTER PROCEDURE Migrar_Pedido
-AS
+CREATE PROCEDURE Migrar_Pedido
+AS 
 BEGIN
-  INSERT INTO QUERYOSOS.Pedido
-    ( nroDePedido
-    , fechaCancelacion
-    , precioTotal
-    , idCliente
-    , estadoActual
-    , idSucursal
-    , idMotivoCancelacion
-    , fechaYHora
-    )
-  SELECT DISTINCT
-    m.Pedido_Numero,
-    m.Pedido_Cancelacion_Fecha,
-    m.Pedido_Total,
-    c.idCliente,
-    e.idEstado,
-    s.idSucursal,
-    mot.id_motivo_cancelacion,
-    m.Pedido_Fecha
-  FROM gd_esquema.Maestra AS m
-  INNER JOIN QUERYOSOS.Cliente AS c 
-    ON c.nombre       = m.Cliente_Nombre
-   AND c.apellido     = m.Cliente_Apellido
-   AND c.nroDocumento = m.Cliente_Dni
-   AND c.mail         = m.Cliente_Mail
-   AND c.telefono     = m.Cliente_Telefono
-  INNER JOIN QUERYOSOS.Direccion AS d1 
-    ON d1.direccion = m.Cliente_Direccion
-  INNER JOIN QUERYOSOS.Localidad AS l1 
-    ON l1.nombre      = m.Cliente_Localidad
-   AND l1.idProvincia = d1.idLocalidad
-  INNER JOIN QUERYOSOS.Estado AS e 
-    ON e.estado = m.Pedido_Estado
-  INNER JOIN QUERYOSOS.Sucursal AS s
-    ON s.numeroSucursal = m.Sucursal_NroSucursal
-  INNER JOIN QUERYOSOS.Direccion AS d2
-    ON d2.direccion = m.Sucursal_Direccion
-   AND d2.idDireccion = s.idDireccion
-  LEFT JOIN QUERYOSOS.Motivo_cancelacion_pedido AS mot
-    ON mot.nombre = m.Pedido_Cancelacion_Motivo
-  WHERE m.Pedido_Numero IS NOT NULL
-    AND NOT EXISTS (
-      SELECT 1
-        FROM QUERYOSOS.Pedido AS p2
-       WHERE p2.nroDePedido = m.Pedido_Numero
-    );
-END;
+	INSERT INTO  QUERYOSOS.Pedido(nroDePedido,fechaCancelacion,precioTotal,idCliente,estadoActual,idSucursal,idMotivoCancelacion,fechaYHora)
+	SELECT DISTINCT Pedido_Numero,Pedido_Cancelacion_Fecha,Pedido_Total,c.idCliente,e.idEstado,s.idSucursal,mot.id_motivo_cancelacion,m.Pedido_Fecha
+	FROM gd_esquema.Maestra m JOIN QUERYOSOS.Cliente c on m.Cliente_Nombre=c.nombre and m.Cliente_Apellido=c.apellido
+	and m.Cliente_FechaNacimiento=c.fechaNacimiento and c.mail=m.Cliente_Mail and c.nroDocumento=m.Cliente_Dni 
+	and c.telefono=m.Cliente_Telefono JOIN QUERYOSOS.Direccion d on d.direccion=m.Cliente_Direccion JOIN Queryosos.Localidad l
+	on Cliente_Localidad=l.nombre and d.idLocalidad=l.idLocalidad and c.idDireccion=d.idDireccion JOIN QUERYOSOS.Estado e on m.Pedido_Estado=e.estado
+	JOIN QUERYOSOS.Sucursal s on m.Sucursal_NroSucursal=s.numeroSucursal JOIN QUERYOSOS.Direccion d2 ON m.Sucursal_Direccion=d2. direccion and 
+	d2.idDireccion=s.idDireccion  LEFT JOIN QUERYOSOS.Motivo_cancelacion_pedido mot on m.Pedido_Cancelacion_Motivo=mot.nombre
+	where Detalle_Pedido_Cantidad is null
+END
+
 GO
 
 
