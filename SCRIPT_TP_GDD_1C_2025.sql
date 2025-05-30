@@ -420,7 +420,7 @@ ADD CONSTRAINT FK_Sucursal_Direccion
 FOREIGN KEY (idDireccion) REFERENCES QUERYOSOS.Direccion(idDireccion);
 
 
---FOREIGN KEYS Para ItemDetalleFFactura
+--FOREIGN KEYS Para ItemDetalleFactura
 
 ALTER TABLE QUERYOSOS.ItemDetalleFactura
 ADD CONSTRAINT FK_ItemDetalleFactura_Factura
@@ -438,7 +438,6 @@ GO
 -------------------------------------
 ------------------------------------
 */
-
 
 ------Primero dropeamos los procedures si ya existen-----
 DROP PROCEDURE IF EXISTS Migrar_Provincia
@@ -907,6 +906,27 @@ BEGIN
 END;
 GO
 
+----------------------------------------------------------------
+----MIGRAMOS DATOS A LA TABLA ItemDetalleFactura -----------
+----------------------------------------------------------------
+CREATE PROCEDURE Migrar_Item_Detalle_Factura
+AS
+BEGIN
+  INSERT INTO QUERYOSOS.ItemDetallefactura
+    (nroFactura --FK, PK
+	, id_item_pedido -- FK, PK
+	, detalle_factura_precio, detalle_factura_cantidad, detalle_factura_subtotal)
+  SELECT
+    f.nroFactura,
+    p.id_item_pedido,                      
+    m.Detalle_Factura_Precio,
+    m.Detalle_Factura_Cantidad,
+    m.Detalle_Factura_SubTotal
+  FROM gd_esquema.Maestra AS m
+    JOIN QUERYOSOS.Factura AS f ON nroFactura = m.Factura_Numero
+	JOIN QUERYOSOS.ItemDetallePedido AS p ON id_item_pedido = p.id_item_pedido;
+END;
+GO
 
 
 ----------------------------------------------------------------
@@ -939,6 +959,8 @@ EXEC Migrar_Relleno
 EXEC Migrar_Sillon
 EXEC Migrar_Material_Sillon
 EXEC Migrar_Item_Detalle_Pedido
+EXEC Migrar_Item_Detalle_Factura
+
 
 
 
