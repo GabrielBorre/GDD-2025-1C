@@ -461,9 +461,8 @@ DROP PROCEDURE IF EXISTS Migrar_Material_Sillon
 DROP PROCEDURE IF EXISTS Migrar_Item_Detalle_Pedido
 DROP PROCEDURE IF EXISTS Migrar_Envio
 DROP PROCEDURE IF EXISTS Migrar_Detalle_Compra
+DROP PROCEDURE IF EXISTS Migrar_Item_Detalle_Factura
 GO
-
-
 
 --Migracion de las Provincias
 
@@ -930,19 +929,22 @@ GO
 ----MIGRAMOS DATOS A LA TABLA ITEMDETALLEFACTURA -----------
 ----------------------------------------------------------------
 
-/*
+
 
 CREATE PROCEDURE Migrar_Item_Detalle_Factura
 AS
 BEGIN
   INSERT INTO QUERYOSOS.ItemDetallefactura(nroFactura,id_item_pedido,detalle_factura_precio,detalle_factura_cantidad,detalle_factura_subtotal)
-  SELECT f.nroFactura,item_pedido.id_item_pedido
+  SELECT DISTINCT f.nroFactura,item_pedido.id_item_pedido,m.Detalle_Factura_Precio,m.Detalle_Factura_Cantidad,m.Detalle_Pedido_SubTotal
   FROM gd_esquema.Maestra m JOIN QUERYOSOS.Factura f on f.nroFactura=m.Factura_Numero JOIN QUERYOSOS.Pedido p on m.Pedido_Numero=p.nroDePedido
-  JOIN QUERYOSOS.ItemDetallePedido item_pedido on p.nroDePedido=item_pedido.nroDePedido 
+  JOIN QUERYOSOS.ItemDetallePedido item_pedido on p.nroDePedido=item_pedido.nroDePedido and m.Detalle_Pedido_Cantidad=item_pedido.cantidad_pedido
+  and m.Detalle_Pedido_SubTotal=item_pedido.subtotal JOIN QUERYOSOS.Sillon sillon on item_pedido.idSillon=sillon.idSillon 
+  where m.Detalle_Factura_Cantidad is not null
 END;
 GO
 
-*/
+
+
 
 -----------------------------------------
 -----------------------------------------
@@ -971,6 +973,7 @@ EXEC Migrar_Sillon
 EXEC Migrar_Material_Sillon
 EXEC Migrar_Item_Detalle_Pedido
 EXEC Migrar_Detalle_Compra
+EXEC Migrar_Item_Detalle_Factura
 
 
 
