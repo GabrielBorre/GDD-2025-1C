@@ -461,6 +461,7 @@ DROP PROCEDURE IF EXISTS Migrar_Material_Sillon
 DROP PROCEDURE IF EXISTS Migrar_Item_Detalle_Pedido
 DROP PROCEDURE IF EXISTS Migrar_Envio
 DROP PROCEDURE IF EXISTS Migrar_Detalle_Compra
+DROP PROCEDURE IF EXISTS Migrar_Item_Detalle_Factura
 GO
 
 
@@ -929,20 +930,43 @@ GO
 ----------------------------------------------------------------
 ----MIGRAMOS DATOS A LA TABLA ITEMDETALLEFACTURA -----------
 ----------------------------------------------------------------
-
-/*
-
 CREATE PROCEDURE Migrar_Item_Detalle_Factura
 AS
 BEGIN
-  INSERT INTO QUERYOSOS.ItemDetallefactura(nroFactura,id_item_pedido,detalle_factura_precio,detalle_factura_cantidad,detalle_factura_subtotal)
-  SELECT f.nroFactura,item_pedido.id_item_pedido
-  FROM gd_esquema.Maestra m JOIN QUERYOSOS.Factura f on f.nroFactura=m.Factura_Numero JOIN QUERYOSOS.Pedido p on m.Pedido_Numero=p.nroDePedido
-  JOIN QUERYOSOS.ItemDetallePedido item_pedido on p.nroDePedido=item_pedido.nroDePedido 
+  INSERT INTO QUERYOSOS.ItemDetallefactura
+    ( nroFactura
+    , id_item_pedido
+    , detalle_factura_precio
+    , detalle_factura_cantidad
+    , detalle_factura_subtotal
+    )
+  SELECT DISTINCT
+    f.nroFactura,
+    x.id_item_pedido,
+    m.Detalle_Factura_Precio,
+    m.Detalle_Factura_Cantidad,
+    m.Detalle_Factura_SubTotal
+  FROM gd_esquema.Maestra AS m
+  INNER JOIN QUERYOSOS.Factura AS f
+    ON f.nroFactura = m.Factura_Numero
+  CROSS APPLY (
+    -- buscar un solo id_item_pedido que coincida
+    SELECT TOP 1 id_item_pedido
+    FROM QUERYOSOS.ItemDetallePedido item
+    WHERE item.nroDePedido     = m.Pedido_Numero
+      AND item.precioUnitario  = m.Detalle_Factura_Precio
+      AND item.cantidad_pedido = m.Detalle_Factura_Cantidad
+      AND item.subtotal        = m.Detalle_Factura_SubTotal
+    ORDER BY item.id_item_pedido -- Si hay varios, tomar el primero
+  ) AS x
+  --filtras las líneas de factura válidas
+  WHERE m.Detalle_Factura_Cantidad IS NOT NULL
+    AND m.Factura_Numero            IS NOT NULL;
 END;
 GO
 
-*/
+
+
 
 -----------------------------------------
 -----------------------------------------
@@ -971,20 +995,5 @@ EXEC Migrar_Sillon
 EXEC Migrar_Material_Sillon
 EXEC Migrar_Item_Detalle_Pedido
 EXEC Migrar_Detalle_Compra
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+EXEC Migrar_Item_Detalle_Factura
 
