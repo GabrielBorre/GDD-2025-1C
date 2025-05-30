@@ -677,11 +677,7 @@ BEGIN
 	JOIN QUERYOSOS.Provincia p on m.Proveedor_Provincia=p.nombre and l.idProvincia=p.idProvincia 
 
 END
-
-
 GO
-
-
 
 
 ------MIGRAMOS LOS PEDIDOS 
@@ -697,11 +693,10 @@ BEGIN
 	on Cliente_Localidad=l.nombre and d.idLocalidad=l.idLocalidad and c.idDireccion=d.idDireccion JOIN QUERYOSOS.Estado e on m.Pedido_Estado=e.estado
 	JOIN QUERYOSOS.Sucursal s on m.Sucursal_NroSucursal=s.numeroSucursal JOIN QUERYOSOS.Direccion d2 ON m.Sucursal_Direccion=d2. direccion and 
 	d2.idDireccion=s.idDireccion  LEFT JOIN QUERYOSOS.Motivo_cancelacion_pedido mot on m.Pedido_Cancelacion_Motivo=mot.nombre
-	where Detalle_Pedido_Cantidad is null
+	where Detalle_Pedido_Cantidad is null or (Detalle_Pedido_Cantidad is not null and Sillon_Codigo is null)
 END
 
 GO
-
 
 --------------------------------------
 ------MIGRAMOS LAS COMPRAS------------
@@ -907,12 +902,11 @@ BEGIN
   FROM gd_esquema.Maestra AS m
   INNER JOIN QUERYOSOS.Pedido AS p
     ON p.nroDePedido = m.Pedido_Numero
-  INNER JOIN QUERYOSOS.Sillon AS s
+   LEFT JOIN QUERYOSOS.Sillon AS s
     ON s.SillonCodigo       = m.Sillon_Codigo
    AND s.SillonModeloCodigo = m.Sillon_Modelo_Codigo
-   JOIN QUERYOSOS.Medida medida on s.idMedidaSillon=medida.idMedidaSillon
-   where Detalle_Pedido_Cantidad is not null and Detalle_Pedido_SubTotal is not null
-   
+   LEFT JOIN QUERYOSOS.Medida medida on s.idMedidaSillon=medida.idMedidaSillon
+   where Detalle_Pedido_Cantidad is not null and Detalle_Pedido_SubTotal is not null  
 END;
 GO
 
