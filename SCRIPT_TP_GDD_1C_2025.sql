@@ -459,6 +459,8 @@ DROP PROCEDURE IF EXISTS Migrar_Sillon
 DROP PROCEDURE IF EXISTS Migrar_Material_Sillon
 DROP PROCEDURE IF EXISTS Migrar_Item_Detalle_Pedido
 DROP PROCEDURE IF EXISTS Migrar_Envio
+DROP PROCEDURE IF EXISTS Migrar_Item_Detalle_Factura
+
 GO
 
 
@@ -918,22 +920,47 @@ BEGIN
 	, detalle_factura_precio, detalle_factura_cantidad, detalle_factura_subtotal)
   SELECT
     f.nroFactura,
-    p.id_item_pedido,                      
+    detped.id_item_pedido,                      
     m.Detalle_Factura_Precio,
     m.Detalle_Factura_Cantidad,
     m.Detalle_Factura_SubTotal
   FROM gd_esquema.Maestra AS m
-    JOIN QUERYOSOS.Factura AS f ON nroFactura = m.Factura_Numero
-	JOIN QUERYOSOS.ItemDetallePedido AS p ON id_item_pedido = p.id_item_pedido;
+    JOIN QUERYOSOS.Factura AS f ON f.nroFactura = m.Factura_Numero
+    JOIN QUERYOSOS.Pedido AS p ON p.nroDePedido = m.Pedido_Numero
+    JOIN QUERYOSOS.ItemDetallePedido AS detped ON detped.nroDePedido = p.nroDePedido
 END;
 GO
 
+--select * from QUERYOSOS.ItemDetallefactura
 
-----------------------------------------------------------------
-----MIGRAMOS DATOS A LA TABLA ITEM_DETALLE_PEDIDO -----------
-----------------------------------------------------------------
+-- Consultas de verificacion
+SELECT COUNT(*)
+FROM gd_esquema.Maestra AS m
+WHERE m.Detalle_Factura_Precio IS NOT NULL
 
------------------------------------------
+-- Verificar si hay facturas sin ítems de pedido
+SELECT m.Factura_Numero, m.Pedido_Numero
+FROM gd_esquema.Maestra m
+WHERE m.Factura_Numero IS NOT NULL
+  AND NOT EXISTS (
+    SELECT 1 
+    FROM QUERYOSOS.Pedido p
+    JOIN QUERYOSOS.ItemDetallePedido ip ON ip.nroDePedido = p.nroDePedido
+    WHERE p.nroDePedido = m.Pedido_Numero
+  )
+
+SELECT m.Pedido_Numero, m.Factura_Numero, COUNT(*) as detalles
+FROM gd_esquema.Maestra m
+WHERE m.Factura_Numero IS NOT NULL
+GROUP BY m.Pedido_Numero, m.Factura_Numero
+ORDER BY COUNT(*) DESC
+
+SELECT p.nroDePedido, COUNT(detped.id_item_pedido) as items
+FROM QUERYOSOS.Pedido p
+LEFT JOIN QUERYOSOS.ItemDetallePedido detped ON detped.nroDePedido = p.nroDePedido
+GROUP BY p.nroDePedido
+ORDER BY COUNT(detped.id_item_pedido) DESC
+
 -----------------------------------------
 ------EJECUTAMOS LOS PROCEDURES PARA HACER
 -------EFECTIVAS LAS MIGRACIONES (RESPETAR ORDEN)---------
