@@ -464,8 +464,6 @@ DROP PROCEDURE IF EXISTS Migrar_Detalle_Compra
 DROP PROCEDURE IF EXISTS Migrar_Item_Detalle_Factura
 GO
 
-
-
 --Migracion de las Provincias
 
 CREATE PROCEDURE Migrar_Provincia
@@ -933,41 +931,74 @@ GO
 CREATE PROCEDURE Migrar_Item_Detalle_Factura
 AS
 BEGIN
-  INSERT INTO QUERYOSOS.ItemDetallefactura
-    ( nroFactura
-    , id_item_pedido
-    , detalle_factura_precio
-    , detalle_factura_cantidad
-    , detalle_factura_subtotal
-    )
+  INSERT INTO QUERYOSOS.ItemDetalleFactura (
+    nroFactura,
+    id_item_pedido,
+    detalle_factura_precio,
+    detalle_factura_cantidad,
+    detalle_factura_subtotal
+  )
   SELECT DISTINCT
     f.nroFactura,
-    x.id_item_pedido,
+    (
+      SELECT TOP (1) ip.id_item_pedido
+      FROM QUERYOSOS.ItemDetallePedido AS ip
+      WHERE
+        ip.nroDePedido        = m.Pedido_Numero
+        AND ip.cantidad_pedido = m.Detalle_Factura_Cantidad
+        AND ip.subtotal        = m.Detalle_Factura_SubTotal
+      ORDER BY
+        ip.id_item_pedido ASC
+    ) AS id_item_pedido,
     m.Detalle_Factura_Precio,
     m.Detalle_Factura_Cantidad,
     m.Detalle_Factura_SubTotal
   FROM gd_esquema.Maestra AS m
-  INNER JOIN QUERYOSOS.Factura AS f
-    ON f.nroFactura = m.Factura_Numero
-  CROSS APPLY (
-    -- buscar un solo id_item_pedido que coincida
-    SELECT TOP 1 id_item_pedido
-    FROM QUERYOSOS.ItemDetallePedido item
-    WHERE item.nroDePedido     = m.Pedido_Numero
-      AND item.precioUnitario  = m.Detalle_Factura_Precio
-      AND item.cantidad_pedido = m.Detalle_Factura_Cantidad
-      AND item.subtotal        = m.Detalle_Factura_SubTotal
-    ORDER BY item.id_item_pedido -- Si hay varios, tomar el primero
-  ) AS x
-  --filtras las líneas de factura válidas
-  WHERE m.Detalle_Factura_Cantidad IS NOT NULL
-    AND m.Factura_Numero            IS NOT NULL;
+    JOIN QUERYOSOS.Factura AS f
+      ON f.nroFactura = m.Factura_Numero
+  WHERE
+    m.Detalle_Factura_Cantidad IS NOT NULL
+    AND (
+      SELECT TOP (1) ip.id_item_pedido
+      FROM QUERYOSOS.ItemDetallePedido AS ip
+      WHERE
+        ip.nroDePedido        = m.Pedido_Numero
+        AND ip.cantidad_pedido = m.Detalle_Factura_Cantidad
+        AND ip.subtotal        = m.Detalle_Factura_SubTotal
+      ORDER BY
+        ip.id_item_pedido ASC
+    ) IS NOT NULL;
 END;
 GO
 
 
+/*Para comprobar cuántas filas de Maestra tienen más de un “match” en ItemDetallePedido, ejecute algo como:
+SELECT
+  m.Pedido_Numero,
+  m.Detalle_Factura_Cantidad,
+  m.Detalle_Factura_SubTotal,
+  COUNT(ip.id_item_pedido) AS cantidad_coincidencias
+FROM gd_esquema.Maestra AS m
+INNER JOIN QUERYOSOS.ItemDetallePedido AS ip
+  ON ip.nroDePedido             = m.Pedido_Numero
+ AND ip.cantidad_pedido          = m.Detalle_Factura_Cantidad
+ AND ip.subtotal                 = m.Detalle_Factura_SubTotal
+WHERE m.Detalle_Factura_Cantidad IS NOT NULL
+GROUP BY
+  m.Pedido_Numero,
+  m.Detalle_Factura_Cantidad,
+  m.Detalle_Factura_SubTotal
+HAVING
+  COUNT(ip.id_item_pedido) > 1
+;
+*/
+
+SELECT COUNT(*) from QUERYOSOS.ItemDetallefactura -- devuelve 161007
+SELECT COUNT(*) from gd_esquema.Maestra WHERE Detalle_Factura_Cantidad IS NOT NULL --devuelve 161017
 
 
+
+--SELECT * from QUERYOSOS.Sillon
 -----------------------------------------
 -----------------------------------------
 ------EJECUTAMOS LOS PROCEDURES PARA HACER
@@ -996,4 +1027,20 @@ EXEC Migrar_Material_Sillon
 EXEC Migrar_Item_Detalle_Pedido
 EXEC Migrar_Detalle_Compra
 EXEC Migrar_Item_Detalle_Factura
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
