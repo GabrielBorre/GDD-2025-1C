@@ -1,8 +1,6 @@
 USE GD1C2025;
 GO
 
-
-
 ---Eliminamos al esquema o lo creamos si no existe-----------------------------
 IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = 'QUERYOSOS')
 BEGIN EXEC ('CREATE SCHEMA QUERYOSOS')
@@ -509,8 +507,6 @@ GO
 
 
 
- 
-
 ----------------------------
 --Migracion de las Localidades
 ----------------------------
@@ -935,14 +931,13 @@ CREATE PROCEDURE Migrar_Item_Detalle_Factura
 AS
 BEGIN
   INSERT INTO QUERYOSOS.ItemDetallefactura(nroFactura,id_item_pedido,detalle_factura_precio,detalle_factura_cantidad,detalle_factura_subtotal)
-  SELECT DISTINCT f.nroFactura,item_pedido.id_item_pedido,m.Detalle_Factura_Precio,m.Detalle_Factura_Cantidad,m.Detalle_Pedido_SubTotal
+  SELECT DISTINCT f.nroFactura,item_pedido.id_item_pedido,m.Detalle_Factura_Precio,m.Detalle_Factura_Cantidad,m.Detalle_Factura_SubTotal
   FROM gd_esquema.Maestra m JOIN QUERYOSOS.Factura f on f.nroFactura=m.Factura_Numero JOIN QUERYOSOS.Pedido p on m.Pedido_Numero=p.nroDePedido
   JOIN QUERYOSOS.ItemDetallePedido item_pedido on p.nroDePedido=item_pedido.nroDePedido and m.Detalle_Pedido_Cantidad=item_pedido.cantidad_pedido
-  and m.Detalle_Pedido_SubTotal=item_pedido.subtotal JOIN QUERYOSOS.Sillon sillon on item_pedido.idSillon=sillon.idSillon 
+  and m.Detalle_Pedido_SubTotal=item_pedido.subtotal LEFT JOIN QUERYOSOS.Sillon sillon on item_pedido.idSillon=sillon.idSillon 
   where m.Detalle_Factura_Cantidad is not null
 END;
 GO
-
 
 
 
@@ -974,7 +969,6 @@ EXEC Migrar_Material_Sillon
 EXEC Migrar_Item_Detalle_Pedido
 EXEC Migrar_Detalle_Compra
 EXEC Migrar_Item_Detalle_Factura
-
 
 
 
