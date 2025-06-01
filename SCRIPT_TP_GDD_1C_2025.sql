@@ -1,8 +1,6 @@
 USE GD1C2025;
 GO
 
-
-
 ---Eliminamos al esquema o lo creamos si no existe-----------------------------
 IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = 'QUERYOSOS')
 BEGIN EXEC ('CREATE SCHEMA QUERYOSOS')
@@ -460,9 +458,9 @@ DROP PROCEDURE IF EXISTS Migrar_Sillon
 DROP PROCEDURE IF EXISTS Migrar_Material_Sillon
 DROP PROCEDURE IF EXISTS Migrar_Item_Detalle_Pedido
 DROP PROCEDURE IF EXISTS Migrar_Envio
+DROP PROCEDURE IF EXISTS Migrar_Detalle_Compra
+DROP PROCEDURE IF EXISTS Migrar_Item_Detalle_Factura
 GO
-
-
 
 --Migracion de las Provincias
 
@@ -508,8 +506,6 @@ END;
 GO
 
 
-
- 
 
 ----------------------------
 --Migracion de las Localidades
@@ -676,11 +672,7 @@ BEGIN
 	JOIN QUERYOSOS.Provincia p on m.Proveedor_Provincia=p.nombre and l.idProvincia=p.idProvincia 
 
 END
-
-
 GO
-
-
 
 
 ------MIGRAMOS LOS PEDIDOS 
@@ -696,11 +688,10 @@ BEGIN
 	on Cliente_Localidad=l.nombre and d.idLocalidad=l.idLocalidad and c.idDireccion=d.idDireccion JOIN QUERYOSOS.Estado e on m.Pedido_Estado=e.estado
 	JOIN QUERYOSOS.Sucursal s on m.Sucursal_NroSucursal=s.numeroSucursal JOIN QUERYOSOS.Direccion d2 ON m.Sucursal_Direccion=d2. direccion and 
 	d2.idDireccion=s.idDireccion  LEFT JOIN QUERYOSOS.Motivo_cancelacion_pedido mot on m.Pedido_Cancelacion_Motivo=mot.nombre
-	where Detalle_Pedido_Cantidad is null
+	where Detalle_Pedido_Cantidad is null or (Detalle_Pedido_Cantidad is not null and Sillon_Codigo is null)
 END
 
 GO
-
 
 --------------------------------------
 ------MIGRAMOS LAS COMPRAS------------
@@ -740,7 +731,6 @@ BEGIN
 
 END
 GO
-SELECT * FROM QUERYOSOS.ItemDetallePedido
 
 --------------------------------------
 ------MIGRAMOS LOS ENVIOS------------
@@ -853,11 +843,17 @@ BEGIN
 	INSERT INTO QUERYOSOS.Sillon(SillonCodigo,SillonModeloCodigo,idMedidaSillon,precioUnitario)
 	SELECT DISTINCT m.Sillon_Codigo,m.Sillon_Modelo_Codigo,medida.idMedidaSillon, m.Sillon_Modelo_Precio+m.Sillon_Medida_Precio+sum(m.Material_Precio)
 	FROM gd_esquema.Maestra m JOIN QUERYOSOS.Medida medida on m.Sillon_Medida_Ancho=medida.ancho and m.Sillon_Medida_Precio=medida.precio
-	and m.Sillon_Medida_Alto=medida.alto and m.Sillon_Medida_Profundidad=medida.profundidad
+	and m.Sillon_Medida_Alto=medida.alto and m.Sillon_Medida_Profundidad=medida.profundidad and m.Sillon_Medida_Precio=medida.precio
 	Where m.Sillon_Codigo is not null and m.Sillon_Modelo_Codigo is not null
-	GROUP BY m.Sillon_Codigo,m.Sillon_Modelo_Codigo,medida.idMedidaSillon,m.Sillon_Modelo_Precio,Sillon_Medida_Precio
+	GROUP BY m.Sillon_Codigo,m.Sillon_Modelo_Codigo,medida.idMedidaSillon,m.Sillon_Modelo_Precio,Sillon_Medida_Precio,m.Pedido_Numero,Detalle_Pedido_Cantidad
 END
 go
+
+
+
+
+
+
 
 ----------------------------------------------------------------
 ----MIGRAMOS DATOS A LA TABLA INTERMEDIA Material_Sillon -----------
@@ -887,31 +883,63 @@ AS
 BEGIN
   INSERT INTO QUERYOSOS.ItemDetallePedido
     ( nroDePedido
-    , sillonCodigo    
+    , idSillon    
     , cantidad_pedido
     , subtotal
     , precioUnitario
     )
-  SELECT
+  SELECT DISTINCT
     m.Pedido_Numero,
     s.idSillon,                      
-    m.Detalle_Compra_Cantidad,
-    m.Detalle_Compra_SubTotal,
+    m.Detalle_Pedido_Cantidad,
+    m.Detalle_Pedido_SubTotal,
     m.Detalle_Pedido_Precio
   FROM gd_esquema.Maestra AS m
   INNER JOIN QUERYOSOS.Pedido AS p
     ON p.nroDePedido = m.Pedido_Numero
-  INNER JOIN QUERYOSOS.Sillon AS s
+   LEFT JOIN QUERYOSOS.Sillon AS s
     ON s.SillonCodigo       = m.Sillon_Codigo
-   AND s.SillonModeloCodigo = m.Sillon_Modelo_Codigo;
+   AND s.SillonModeloCodigo = m.Sillon_Modelo_Codigo
+   LEFT JOIN QUERYOSOS.Medida medida on s.idMedidaSillon=medida.idMedidaSillon
+   where Detalle_Pedido_Cantidad is not null and Detalle_Pedido_SubTotal is not null  
+END;
+GO
+
+----------------------------------------------------------------
+----MIGRAMOS DATOS A LA TABLA DETALLECOMPRA -----------
+----------------------------------------------------------------
+
+CREATE PROCEDURE Migrar_Detalle_Compra
+AS
+BEGIN
+  INSERT INTO QUERYOSOS.DetalleCompra(nroDeCompra,precioUnitario,cantidad,subtotal,idMaterial)
+  SELECT c.nroDeCompra,m.Detalle_Compra_Precio,m.Detalle_Compra_Cantidad,m.Detalle_Compra_SubTotal,mate.idMaterial
+  FROM gd_esquema.Maestra m JOIN QUERYOSOS.Compra c on  m.Compra_Numero=c.nroDeCompra JOIN QUERYOSOS.Material mate
+  on mate.tipo=m.Material_Tipo and mate.nombre=m.Material_Nombre and mate.descripcion=m.Material_Descripcion
+  where Detalle_Compra_Cantidad is not null
 END;
 GO
 
 
+----------------------------------------------------------------
+----MIGRAMOS DATOS A LA TABLA ITEMDETALLEFACTURA -----------
+----------------------------------------------------------------
 
-----------------------------------------------------------------
-----MIGRAMOS DATOS A LA TABLA ITEM_DETALLE_PEDIDO -----------
-----------------------------------------------------------------
+
+
+CREATE PROCEDURE Migrar_Item_Detalle_Factura
+AS
+BEGIN
+  INSERT INTO QUERYOSOS.ItemDetallefactura(nroFactura,id_item_pedido,detalle_factura_precio,detalle_factura_cantidad,detalle_factura_subtotal)
+  SELECT DISTINCT f.nroFactura,item_pedido.id_item_pedido,m.Detalle_Factura_Precio,m.Detalle_Factura_Cantidad,m.Detalle_Factura_SubTotal
+  FROM gd_esquema.Maestra m JOIN QUERYOSOS.Factura f on f.nroFactura=m.Factura_Numero JOIN QUERYOSOS.Pedido p on m.Pedido_Numero=p.nroDePedido
+  JOIN QUERYOSOS.ItemDetallePedido item_pedido on p.nroDePedido=item_pedido.nroDePedido and m.Detalle_Pedido_Cantidad=item_pedido.cantidad_pedido
+  and m.Detalle_Pedido_SubTotal=item_pedido.subtotal LEFT JOIN QUERYOSOS.Sillon sillon on item_pedido.idSillon=sillon.idSillon 
+  where m.Detalle_Factura_Cantidad is not null
+END;
+GO
+
+
 
 -----------------------------------------
 -----------------------------------------
@@ -939,8 +967,8 @@ EXEC Migrar_Relleno
 EXEC Migrar_Sillon
 EXEC Migrar_Material_Sillon
 EXEC Migrar_Item_Detalle_Pedido
-
-
+EXEC Migrar_Detalle_Compra
+EXEC Migrar_Item_Detalle_Factura
 
 
 
