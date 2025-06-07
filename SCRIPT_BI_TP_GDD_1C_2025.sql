@@ -49,6 +49,8 @@ GO
 
 CREATE TABLE QUERYOSOS.BI_RangoEtario (
   idRango       INTEGER NOT NULL IDENTITY(1,1) PRIMARY KEY,
+  desdeEdad		INTEGER,
+  hastaEdad		INTEGER,
   descripcion   VARCHAR(50)
 );
 GO
@@ -191,6 +193,25 @@ ADD CONSTRAINT FK_Cliente_RangoEtario
 FOREIGN KEY (idRangoEtario) REFERENCES QUERYOSOS.BI_RangoEtario(idRango);
 GO
 
+--------------------------------------------------------
+-------- Rango Etario ----------------------------------
+--------------------------------------------------------
+
+UPDATE QUERYOSOS.BI_RangoEtario
+SET desdeEdad =   0, hastaEdad =  24
+WHERE idRango = 1;
+
+UPDATE QUERYOSOS.BI_RangoEtario
+SET desdeEdad =  25, hastaEdad =  35
+WHERE idRango = 2;
+
+UPDATE QUERYOSOS.BI_RangoEtario
+SET desdeEdad =  36, hastaEdad =  50
+WHERE idRango = 3;
+
+UPDATE QUERYOSOS.BI_RangoEtario
+SET desdeEdad =  51, hastaEdad = 999
+WHERE idRango = 4;
 GO
 
 --------------------------------------------------------
@@ -285,6 +306,39 @@ GO
 -----------------------------
 --------- FUNCIONES ---------
 -----------------------------
+GO
+CREATE FUNCTION QUERYOSOS.CUATRIMESTRE(@Fecha DATETIME)
+RETURNS INT
+AS
+BEGIN
+    DECLARE @Cuatrimestre INT;
+
+    SET @Cuatrimestre = 
+        CASE
+            WHEN MONTH(@Fecha) BETWEEN 1 AND 4 THEN 1
+            WHEN MONTH(@Fecha) BETWEEN 5 AND 8 THEN 2
+            WHEN MONTH(@Fecha) BETWEEN 9 AND 12 THEN 3
+            ELSE NULL
+        END;
+
+    RETURN @Cuatrimestre;
+END
+GO
+
+GO
+CREATE FUNCTION QUERYOSOS.RANGO_EDAD(@Edad INT)
+RETURNS INT
+AS
+BEGIN
+    DECLARE @Rango INT;
+
+    SELECT @Rango = idRango
+      FROM QUERYOSOS.BI_RangoEtario
+     WHERE @Edad BETWEEN desdeEdad AND hastaEdad;
+
+    RETURN @Rango;
+END
+GO
 
 -------------------------------------
 -------- MIGRACION DE DATOS ---------
@@ -296,8 +350,8 @@ DROP PROCEDURE IF EXISTS Migrar_Nombre
 
 
 
-
-
+DROP FUNCTION QUERYOSOS.CUATRIMESTRE
+DROP FUNCTION QUERYOSOS.RANGO_EDAD
 -----------------------------------------
 -----------------------------------------
 ------EJECUTAMOS LOS PROCEDURES PARA HACER
@@ -306,6 +360,8 @@ DROP PROCEDURE IF EXISTS Migrar_Nombre
 ------------------------------------
 
 --EXEC Migrar_Nombre
+
+
 
 -------------------------------------
 --------------- TESTS ---------------
