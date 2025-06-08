@@ -3,6 +3,9 @@ GO
 
 ------Primero dropeamos los procedures si ya existen-----
 DROP PROCEDURE IF EXISTS QUERYOSOS.BI_MigrarTiempo
+DROP PROCEDURE IF EXISTS QUERYOSOS.BI_MigrarRangoEtario
+DROP PROCEDURE IF EXISTS QUERYOSOS.BI_MigrarUbicaciones
+DROP PROCEDURE IF EXISTS QUERYOSOS.BI_MigrarSucursales
 GO
 ------luego dropeamos las funciones si ya existen-----
 DROP FUNCTION IF EXISTS QUERYOSOS.CUATRIMESTRE
@@ -76,8 +79,9 @@ GO
 
 CREATE TABLE QUERYOSOS.BI_Ubicacion (
   idUbicacion   INTEGER NOT NULL IDENTITY(1,1) PRIMARY KEY,
-  idProvincia   INTEGER,
-  idLocalidad   INTEGER
+  provincia		VARCHAR(255),
+  localidad		VARCHAR(255),
+  direccion		VARCHAR(255)
 );
 GO
 
@@ -208,14 +212,7 @@ GO
 ----------------------------------
 -------- CREACION DE FKs ---------
 ----------------------------------
--- FOREIGN KEYS para BI_Ubicacion
-ALTER TABLE QUERYOSOS.BI_Ubicacion
-ADD CONSTRAINT FK_BI_Ubicacion_Provincia
-FOREIGN KEY (idProvincia) REFERENCES QUERYOSOS.Provincia(idProvincia);
 
-ALTER TABLE QUERYOSOS.BI_Ubicacion
-ADD CONSTRAINT FK_BI_Ubicacion_Localidad
-FOREIGN KEY (idLocalidad) REFERENCES QUERYOSOS.Localidad(idLocalidad);
 
 -- FOREIGN KEY para BI_ModeloSillon
 ALTER TABLE QUERYOSOS.BI_ModeloSillon
@@ -258,7 +255,7 @@ SET desdeEdad =  36, hastaEdad =  50
 WHERE idRango = 3;
 
 UPDATE QUERYOSOS.BI_RangoEtario
-SET desdeEdad =  51, hastaEdad = 999
+SET desdeEdad =  51, hastaEdad = 500
 WHERE idRango = 4;
 GO
 
@@ -427,7 +424,60 @@ BEGIN
 END
 GO
 
+CREATE PROCEDURE QUERYOSOS.BI_MigrarRangoEtario AS
+BEGIN 
+	INSERT INTO QUERYOSOS.BI_RangoEtario(desdeEdad, hastaEdad, descripcion)
+    SELECT DISTINCT
+        CASE 
+            WHEN DATEDIFF(year, fechaNacimiento, GETDATE()) < 25 THEN 0
+            WHEN DATEDIFF(year, fechaNacimiento, GETDATE()) BETWEEN 25 AND 35 THEN 25
+            WHEN DATEDIFF(year, fechaNacimiento, GETDATE()) BETWEEN 35 AND 50 THEN 35
+            WHEN DATEDIFF(year, fechaNacimiento, GETDATE()) > 50 THEN 50
+        END,
+        CASE 
+            WHEN DATEDIFF(year, fechaNacimiento, GETDATE()) < 25 THEN 25
+            WHEN DATEDIFF(year, fechaNacimiento, GETDATE()) BETWEEN 25 AND 35 THEN 35
+            WHEN DATEDIFF(year, fechaNacimiento, GETDATE()) BETWEEN 35 AND 50 THEN 50
+            WHEN DATEDIFF(year, fechaNacimiento, GETDATE()) > 50 THEN 500
+        END,
+        CASE 
+            WHEN DATEDIFF(year, fechaNacimiento, GETDATE()) < 25 THEN 'Menor a 25'
+            WHEN DATEDIFF(year, fechaNacimiento, GETDATE()) BETWEEN 25 AND 35 THEN 'Entre 25 y 35'
+            WHEN DATEDIFF(year, fechaNacimiento, GETDATE()) BETWEEN 35 AND 50 THEN 'Entre 35 y 50'
+            WHEN DATEDIFF(year, fechaNacimiento, GETDATE()) > 50 THEN 'Mayor a 50'
+        END
+		FROM QUERYOSOS.Cliente
+END
+GO
 
+CREATE PROCEDURE QUERYOSOS.BI_MigrarUbicaciones AS
+BEGIN 
+	INSERT INTO QUERYOSOS.BI_Ubicacion(provincia, localidad, direccion)
+	SELECT DISTINCT 
+		p.nombre AS provincia, 
+		l.nombre AS localidad, 
+		d.direccion AS direccion
+	FROM QUERYOSOS.Direccion d JOIN QUERYOSOS.Localidad l on d.idLocalidad = l.idLocalidad
+	JOIN QUERYOSOS.Provincia p on l.idProvincia = p.idProvincia
+
+END
+GO
+
+CREATE PROCEDURE QUERYOSOS.BI_MigrarSucursales AS
+BEGIN 
+	INSERT INTO QUERYOSOS.BI_Sucursal(numeroSucursal, idUbicacion)
+	SELECT DISTINCT 
+		numeroSucursal, 
+		u.idUbicacion
+	FROM QUERYOSOS.Sucursal s JOIN QUERYOSOS.Direccion d  on s.idDireccion = d.idDireccion
+	JOIN QUERYOSOS.Localidad l on d.idLocalidad = l.idLocalidad
+	JOIN QUERYOSOS.Provincia p on l.idProvincia = p.idProvincia
+	JOIN QUERYOSOS.BI_Ubicacion AS u
+		on u.provincia = p.nombre
+		AND u.localidad = l.nombre
+		AND u.direccion = d.direccion;
+
+END
 GO
 
 /*
@@ -460,21 +510,13 @@ CREATE PROCEDURE QUERYOSOS.BI_MigrarPedido
 ------------------------------------
 
 EXEC QUERYOSOS.BI_MigrarTiempo
-
-SELECT * FROM QUERYOSOS.BI_Tiempo ORDER BY anio, mes;
-
+EXEC QUERYOSOS.BI_MigrarRangoEtario
+EXEC QUERYOSOS.BI_MigrarUbicaciones
+EXEC QUERYOSOS.BI_MigrarSucursales
 -------------------------------------
 --------------- TESTS ---------------
 -------------------------------------
-
-
-
-
-
-
-
-
-
-
-
+--SELECT * FROM QUERYOSOS.BI_Tiempo ORDER BY anio, mes;
+SELECT COUNT(*) FROM QUERYOSOS.BI_Sucursal
+SELECT COUNT(*) FROM QUERYOSOS.Sucursal
 
