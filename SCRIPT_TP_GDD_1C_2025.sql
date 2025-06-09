@@ -973,8 +973,3 @@ EXEC Migrar_Detalle_Compra
 EXEC Migrar_Item_Detalle_Factura
 
 
-
-
-
-
-
