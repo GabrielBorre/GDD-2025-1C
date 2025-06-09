@@ -105,69 +105,82 @@ GO
 -----------------------------------------------
 
 CREATE TABLE QUERYOSOS.BI_Pedido(
-	idPedido		INTEGER IDENTITY(1,1) PRIMARY KEY,
-	idSucursal		INTEGER NOT NULL,
-	idTiempo		INTEGER NOT NULL,
-	idTurno			INTEGER NOT NULL,
-	idUbicacion		INTEGER NOT NULL,
-	idEstadoBI		INTEGER NOT NULL,
-	fechaYhora		DATETIME2,
-	precioTotal		DECIMAL(18,2),
+	idPedido			INTEGER IDENTITY(1,1),
+	idSucursal			INTEGER NOT NULL,
+	idTiempo			INTEGER NOT NULL,
+	idTurno				INTEGER NOT NULL,
+	idUbicacion			INTEGER NOT NULL,
+	idEstadoBI			INTEGER NOT NULL,
+	fechaYhora			DATETIME2,
+	precioTotal			DECIMAL(18,2),
 	estadoActual		INTEGER,
 	fechaCancelacion	DATETIME2,
 	motivoCancelacion	INTEGER,
 	cantidadPedidos		INTEGER,
+	
+	PRIMARY KEY (idPedido, idSucursal, idTiempo, idTurno, idUbicacion, idEstadoBI)
 );
 GO
 
 CREATE TABLE QUERYOSOS.BI_Facturacion(
-	idFacturacion    BIGINT IDENTITY(1,1) PRIMARY KEY,
+	idPedido		 BIGINT IDENTITY(1,1),
 	idRangoEtario    INTEGER NOT NULL,
 	idSucursal       INTEGER NOT NULL,
 	idTiempo         INTEGER NOT NULL,
 	idModelo         BIGINT NOT NULL,
-	idUbicacion	 INTEGER NOT NULL,
+	idUbicacion		 INTEGER NOT NULL,
 	fechaYHora       DATETIME2,
 	importeTotal     DECIMAL(38,2),
 	promedioMensual  DECIMAL(18,2),
+
+	PRIMARY KEY (idPedido, idRangoEtario, idSucursal, idTiempo, idModelo, idUbicacion)
 );
 GO
 
 CREATE TABLE QUERYOSOS.BI_Envio (
-	idEnvio              DECIMAL(18,0) PRIMARY KEY,
-	idTiempo	     INTEGER NOT NULL,
-	idUbicacion	     INTEGER NOT NULL,
-	fechaProgramada	     DATETIME2,
-	fechaHoraEntrega     DATETIME2,
-	envioTotal	     DECIMAL(18,2),
-	localidadMayorEnvio  INTEGER,
+	idPedido              DECIMAL(18,0),
+	idTiempo			  INTEGER NOT NULL,
+	idUbicacion			  INTEGER NOT NULL,
+	fechaProgramada	      DATETIME2,
+	fechaHoraEntrega      DATETIME2,
+	envioTotal			  DECIMAL(18,2),
+	localidadMayorEnvio   INTEGER,
+
+	PRIMARY KEY (idPedido, idTiempo, idUbicacion)
   );
 GO
 
 CREATE TABLE QUERYOSOS.BI_Compra (
-	idCompra        INTEGER IDENTITY(1,1) PRIMARY KEY,
+	idPedido        INTEGER IDENTITY(1,1),
 	idTiempo        INTEGER NOT NULL,
 	idMaterial	INTEGER NOT NULL,
 	idSucursal      INTEGER NOT NULL,
 	importePromedio DECIMAL(12,2),
+
+	PRIMARY KEY (idPedido, idTiempo, idMaterial, idSucursal)
 );
 GO
 
 CREATE TABLE QUERYOSOS.BI_Fabricacion (
-  idPedido       INTEGER IDENTITY(1,1) PRIMARY KEY,
+  idPedido       INTEGER IDENTITY(1,1),
   idTiempo       INTEGER NOT NULL,
   tiempoPromedio INTEGER
+
+  PRIMARY KEY (idPedido, idTiempo)
+
 );
 GO
 
 CREATE TABLE QUERYOSOS.BI_Ganancia (
-  idGanancia        INTEGER IDENTITY(1,1) PRIMARY KEY,
+  idGanancia        INTEGER IDENTITY(1,1),
   idTiempo          INTEGER NOT NULL,
   idSucursal	    INTEGER NOT NULL,
   idUbicacion	    INTEGER NOT NULL,
   totalIngresos     DECIMAL(12,2),
   totalEgresos      DECIMAL(12,2),
   gananciaTotal     DECIMAL(12,2),
+
+   PRIMARY KEY (idGanancia, idTiempo, idSucursal, idUbicacion)
 );
 GO
 
@@ -260,7 +273,7 @@ ADD CONSTRAINT FK_Compra_Material
 FOREIGN KEY (idMaterial) REFERENCES QUERYOSOS.BI_Material(idMaterial);
 
 ALTER TABLE QUERYOSOS.BI_Compra
-ADD CONSTRAINT FK_Compra_Sucursal     
+ADD CONSTRAINT FK_Compra_Suc     -- ya tenemos una FK llamada FK_Compra_Sucursal en el otro script en QUERYOSOS.Compra
 FOREIGN KEY (idSucursal) REFERENCES QUERYOSOS.BI_Sucursal(idSucursal);
 
 
@@ -339,8 +352,6 @@ BEGIN
 END
 GO
 
-
-
 -------------------------------------
 -------- MIGRACION DE DATOS ---------
 -------------------------------------
@@ -375,13 +386,13 @@ BEGIN
             WHEN DATEDIFF(year, fechaNacimiento, GETDATE()) BETWEEN 25 AND 35 THEN 35
             WHEN DATEDIFF(year, fechaNacimiento, GETDATE()) BETWEEN 35 AND 50 THEN 50
             WHEN DATEDIFF(year, fechaNacimiento, GETDATE()) > 50 THEN 500
-        END,
+        END/*, esto no iria porque no tenemos una columna "descripcion"
         CASE 
             WHEN DATEDIFF(year, fechaNacimiento, GETDATE()) < 25 THEN 'Menor a 25'
             WHEN DATEDIFF(year, fechaNacimiento, GETDATE()) BETWEEN 25 AND 35 THEN 'Entre 25 y 35'
             WHEN DATEDIFF(year, fechaNacimiento, GETDATE()) BETWEEN 35 AND 50 THEN 'Entre 35 y 50'
             WHEN DATEDIFF(year, fechaNacimiento, GETDATE()) > 50 THEN 'Mayor a 50'
-        END
+        END*/
 		FROM QUERYOSOS.Cliente
 END
 GO
