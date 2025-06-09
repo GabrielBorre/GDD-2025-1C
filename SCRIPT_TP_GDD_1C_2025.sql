@@ -103,7 +103,7 @@ GO
 CREATE TABLE QUERYOSOS.ItemDetallePedido (
 id_item_pedido Integer Identity(1,1) CONSTRAINT PK_Item_Detalle_Pedido PRIMARY KEY,
 nroDePedido decimal(18,0),
-idSillon BigInt,
+sillon_modelo_codigo BigInt,
 cantidad_pedido BigInt,
 subtotal decimal(18,2),
 precioUnitario decimal(18,2)
@@ -301,7 +301,9 @@ FOREIGN KEY (nroDePedido) References QUERYOSOS.Pedido(nroDePedido)
 
 ALTER TABLE QUERYOSOS.ItemDetallePedido
 ADD CONSTRAINT FK_Item_Detalle_Pedido_Sillon
-FOREIGN KEY(idSillon) REFERENCES QUERYOSOS.Sillon(idSillon)
+FOREIGN KEY(sillon_modelo_codigo) REFERENCES QUERYOSOS.Modelo(sillon_modelo_codigo)
+
+
 
 --FOREIGN KEYS PARA FACTURA
 
@@ -644,6 +646,7 @@ END
 --MIGRAMOS LOS CLIENTES--
 GO
 
+
 CREATE PROCEDURE Migrar_Cliente
 AS 
 BEGIN
@@ -883,14 +886,14 @@ AS
 BEGIN
   INSERT INTO QUERYOSOS.ItemDetallePedido
     ( nroDePedido
-    , idSillon    
+    , sillon_modelo_codigo    
     , cantidad_pedido
     , subtotal
     , precioUnitario
     )
   SELECT DISTINCT
     m.Pedido_Numero,
-    s.idSillon,                      
+    s.SillonModeloCodigo,                      
     m.Detalle_Pedido_Cantidad,
     m.Detalle_Pedido_SubTotal,
     m.Detalle_Pedido_Precio
@@ -898,12 +901,12 @@ BEGIN
   INNER JOIN QUERYOSOS.Pedido AS p
     ON p.nroDePedido = m.Pedido_Numero
    LEFT JOIN QUERYOSOS.Sillon AS s
-    ON s.SillonCodigo       = m.Sillon_Codigo
-   AND s.SillonModeloCodigo = m.Sillon_Modelo_Codigo
+   on s.SillonModeloCodigo = m.Sillon_Modelo_Codigo
    LEFT JOIN QUERYOSOS.Medida medida on s.idMedidaSillon=medida.idMedidaSillon
-   where Detalle_Pedido_Cantidad is not null and Detalle_Pedido_SubTotal is not null  
+   where Detalle_Pedido_Cantidad is not null and Detalle_Pedido_SubTotal is not null and Sillon_Codigo is not null
 END;
 GO
+
 
 ----------------------------------------------------------------
 ----MIGRAMOS DATOS A LA TABLA DETALLECOMPRA -----------
@@ -934,8 +937,7 @@ BEGIN
   SELECT DISTINCT f.nroFactura,item_pedido.id_item_pedido,m.Detalle_Factura_Precio,m.Detalle_Factura_Cantidad,m.Detalle_Factura_SubTotal
   FROM gd_esquema.Maestra m JOIN QUERYOSOS.Factura f on f.nroFactura=m.Factura_Numero JOIN QUERYOSOS.Pedido p on m.Pedido_Numero=p.nroDePedido
   JOIN QUERYOSOS.ItemDetallePedido item_pedido on p.nroDePedido=item_pedido.nroDePedido and m.Detalle_Pedido_Cantidad=item_pedido.cantidad_pedido
-  and m.Detalle_Pedido_SubTotal=item_pedido.subtotal LEFT JOIN QUERYOSOS.Sillon sillon on item_pedido.idSillon=sillon.idSillon 
-  where m.Detalle_Factura_Cantidad is not null
+  and m.Detalle_Pedido_SubTotal=item_pedido.subtotal and Detalle_Pedido_Precio=item_pedido.precioUnitario
 END;
 GO
 
@@ -969,15 +971,6 @@ EXEC Migrar_Material_Sillon
 EXEC Migrar_Item_Detalle_Pedido
 EXEC Migrar_Detalle_Compra
 EXEC Migrar_Item_Detalle_Factura
-
-
-
-
-
-
-
-
-
 
 
 
