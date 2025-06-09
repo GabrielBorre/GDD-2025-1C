@@ -106,7 +106,8 @@ nroDePedido decimal(18,0),
 sillon_modelo_codigo BigInt,
 cantidad_pedido BigInt,
 subtotal decimal(18,2),
-precioUnitario decimal(18,2)
+precioUnitario decimal(18,2), 
+nroFactura bigint
 )
 
 CREATE TABLE QUERYOSOS.Factura (
@@ -303,7 +304,9 @@ ALTER TABLE QUERYOSOS.ItemDetallePedido
 ADD CONSTRAINT FK_Item_Detalle_Pedido_Sillon
 FOREIGN KEY(sillon_modelo_codigo) REFERENCES QUERYOSOS.Modelo(sillon_modelo_codigo)
 
-
+ALTER TABLE QUERYOSOS.ItemDetallePedido
+ADD CONSTRAINT FK_Item_Detalle_Pedido_Factura
+FOREIGN KEY(nroFactura) REFERENCES QUERYOSOS.Factura(nroFactura)
 
 --FOREIGN KEYS PARA FACTURA
 

@@ -501,7 +501,8 @@ BEGIN
 		('14:00 - 20:00')
 END
 GO
-/*
+--esto funciona salvo modelo sillon :(
+/* 
 CREATE PROCEDURE QUERYOSOS.BI_MigrarFacturacion AS
 BEGIN
 	INSERT INTO QUERYOSOS.BI_Facturacion(idRangoEtario, idSucursal, fechaYHora, 
@@ -513,14 +514,14 @@ BEGIN
 	(SELECT AVG(f2.importeTotal) FROM QUERYOSOS.Factura f2 
 		WHERE YEAR(f2.fechaYhora)  = YEAR(f.fechaYhora) AND MONTH(f2.fechaYhora) = MONTH(f.fechaYhora) AND f2.idSucursal = f.idSucursal),
 	(SELECT t.idTiempo FROM QUERYOSOS.BI_Tiempo AS t WHERE t.anio = YEAR(f.fechaYHora) AND t.mes = MONTH(f.fechaYHora)),
-	(SELECT TOP 1 m.descripcion FROM QUERYOSOS.ItemDetallePedido i JOIN QUERYOSOS.Modelo m on m.sillon_modelo_codigo = i.idSillon
-	WHERE i.nroDePedido = f.nroFactura GROUP BY m.descripcion)
+	(SELECT TOP 1 m.descripcion FROM QUERYOSOS.ItemDetallePedido i JOIN QUERYOSOS.Modelo m on m.sillon_modelo_codigo = i.sillon_modelo_codigo
+	WHERE i.nroFactura = f.nroFactura GROUP BY m.descripcion order by SUM(i.cantidad_pedido))
 	FROM QUERYOSOS.Factura f JOIN QUERYOSOS.Cliente c on c.idCliente = f.idCliente
 END
 GO
+
 SELECT * FROM QUERYOSOS.BI_Facturacion
-SELECT * FROM QUERYOSOS.Modelo order by sillon_modelo_codigo
-SELECT * FROM QUERYOSOS.ItemDetallePedido WHERE idSillon IS NOT NULL order by idSillon*/
+*/
 -------------------------------------
 ------- CREACION DE VISTAS ----------
 -------------------------------------
@@ -539,7 +540,8 @@ EXEC QUERYOSOS.BI_MigrarSucursales
 EXEC QUERYOSOS.BI_MigrarMaterial
 EXEC QUERYOSOS.BI_MigrarEstadoPedido
 EXEC QUERYOSOS.BI_MigrarTurnos
---EXEC QUERYOSOS.BI_MigrarFacturacion
+EXEC QUERYOSOS.BI_MigrarFacturacion
+GO
 -------------------------------------
 --------------- TESTS ---------------
 -------------------------------------
