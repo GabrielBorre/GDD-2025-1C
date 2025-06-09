@@ -22,23 +22,20 @@ GO
 ------------------------------------------------------------------------------------------------
 
 -- tablas de hechos 
-IF OBJECT_ID('QUERYOSOS.BI_ModeloSillon','U')      IS NOT NULL DROP TABLE QUERYOSOS.BI_ModeloSillon;
 IF OBJECT_ID('QUERYOSOS.BI_Fabricacion','U')       IS NOT NULL DROP TABLE QUERYOSOS.BI_Fabricacion;
 IF OBJECT_ID('QUERYOSOS.BI_Envio','U')             IS NOT NULL DROP TABLE QUERYOSOS.BI_Envio;
-IF OBJECT_ID('QUERYOSOS.BI_CompraMaterial','U')    IS NOT NULL DROP TABLE QUERYOSOS.BI_CompraMaterial;
 IF OBJECT_ID('QUERYOSOS.BI_Compra','U')            IS NOT NULL DROP TABLE QUERYOSOS.BI_Compra;
 IF OBJECT_ID('QUERYOSOS.BI_Pedido','U')            IS NOT NULL DROP TABLE QUERYOSOS.BI_Pedido;
 IF OBJECT_ID('QUERYOSOS.BI_Facturacion','U')       IS NOT NULL DROP TABLE QUERYOSOS.BI_Facturacion;
 IF OBJECT_ID('QUERYOSOS.BI_Ganancia','U')          IS NOT NULL DROP TABLE QUERYOSOS.BI_Ganancia;
 
-IF OBJECT_ID('QUERYOSOS.BI_Cliente','U')           IS NOT NULL DROP TABLE QUERYOSOS.BI_Cliente;
-IF OBJECT_ID('QUERYOSOS.BI_Sucursal','U')          IS NOT NULL DROP TABLE QUERYOSOS.BI_Sucursal;
 
 -- tablas otras
+IF OBJECT_ID('QUERYOSOS.BI_Sucursal','U')          IS NOT NULL DROP TABLE QUERYOSOS.BI_Sucursal;
+IF OBJECT_ID('QUERYOSOS.BI_Modelo','U')           IS NOT NULL DROP TABLE QUERYOSOS.BI_Modelo;
 IF OBJECT_ID('QUERYOSOS.BI_Turno','U')             IS NOT NULL DROP TABLE QUERYOSOS.BI_Turno;
 IF OBJECT_ID('QUERYOSOS.BI_Material','U')          IS NOT NULL DROP TABLE QUERYOSOS.BI_Material;
 IF OBJECT_ID('QUERYOSOS.BI_RangoEtario','U')       IS NOT NULL DROP TABLE QUERYOSOS.BI_RangoEtario;
-IF OBJECT_ID('QUERYOSOS.BI_MotivoCancelacion','U') IS NOT NULL DROP TABLE QUERYOSOS.BI_MotivoCancelacion;
 IF OBJECT_ID('QUERYOSOS.BI_EstadoPedido','U')      IS NOT NULL DROP TABLE QUERYOSOS.BI_EstadoPedido;
 IF OBJECT_ID('QUERYOSOS.BI_Ubicacion','U')         IS NOT NULL DROP TABLE QUERYOSOS.BI_Ubicacion;
 IF OBJECT_ID('QUERYOSOS.BI_Tiempo','U')            IS NOT NULL DROP TABLE QUERYOSOS.BI_Tiempo;
@@ -49,15 +46,8 @@ GO
 ----------------------------------
 ---- CREACION DE TABLAS Y PKs ----
 ----------------------------------
-CREATE TABLE QUERYOSOS.BI_Cliente (
-  idCliente      INTEGER    PRIMARY KEY,     
-  idUbicacion    INTEGER,                    
-  idRangoEtario  INTEGER                     
-);
-GO
-
 CREATE TABLE QUERYOSOS.BI_Tiempo (
-  idTiempo      INTEGER NOT NULL IDENTITY(1,1) PRIMARY KEY,
+  idTiempo      INTEGER IDENTITY(1,1) PRIMARY KEY,
   anio          INTEGER,
   cuatrimestre  VARCHAR(255),
   mes           INTEGER
@@ -65,59 +55,49 @@ CREATE TABLE QUERYOSOS.BI_Tiempo (
 GO
 
 CREATE TABLE QUERYOSOS.BI_Ubicacion (
-  idUbicacion   INTEGER NOT NULL IDENTITY(1,1) PRIMARY KEY,
-  provincia		VARCHAR(255),
-  localidad		VARCHAR(255),
-  direccion		VARCHAR(255)
+  idUbicacion   INTEGER IDENTITY(1,1) PRIMARY KEY,
+  provincia	VARCHAR(255),
+  localidad	VARCHAR(255),
+  direccion	VARCHAR(255)
 );
 GO
 
 CREATE TABLE QUERYOSOS.BI_RangoEtario (
-  idRango       INTEGER NOT NULL IDENTITY(1,1) PRIMARY KEY,
+  idRangoEtario 	INTEGER IDENTITY(1,1) PRIMARY KEY,
   desdeEdad		INTEGER,
   hastaEdad		INTEGER,
-  descripcion   VARCHAR(50)
 );
 GO
 
 CREATE TABLE QUERYOSOS.BI_Turno (
-  idTurno       INTEGER NOT NULL IDENTITY(1,1) PRIMARY KEY,
+  idTurno       INTEGER IDENTITY(1,1) PRIMARY KEY,
   descripcion   VARCHAR(50)
 );
 GO
 
 CREATE TABLE QUERYOSOS.BI_Material (
-  idMaterial  INTEGER NOT NULL IDENTITY(1,1) PRIMARY KEY,
-  tipo          VARCHAR(50)
+  idMaterial  INTEGER IDENTITY(1,1) PRIMARY KEY,
+  tipo        NVARCHAR(255)
 );
 GO
 
-CREATE TABLE QUERYOSOS.BI_ModeloSillon (
-   sillon_modelo_codigo  BIGINT NOT NULL IDENTITY(1,1)  PRIMARY KEY,
-   cantidad_ventas DECIMAL(10,0),
-   descripcion NVARCHAR(255),
-   idRango INTEGER,
-   idFacturacion BIGINT, 
-   idTiempo INTEGER
+CREATE TABLE QUERYOSOS.BI_Modelo (
+   idModelo	  BIGINT IDENTITY(1,1)  PRIMARY KEY,
+   cantidadVentas DECIMAL(18,0),
+   descripcion	  NVARCHAR(255),
 );
 GO
 
 CREATE TABLE QUERYOSOS.BI_EstadoPedido (
-  idEstado    INTEGER NOT NULL IDENTITY(1,1) PRIMARY KEY,
+  idEstadoBI    INTEGER IDENTITY(1,1) PRIMARY KEY,
   estado        VARCHAR(50)
-);
-GO
-
-CREATE TABLE QUERYOSOS.BI_MotivoCancelacion (
-  idMotivoCancelacion INTEGER PRIMARY KEY,
-  nombre              NVARCHAR(255)
 );
 GO
 
 CREATE TABLE QUERYOSOS.BI_Sucursal(
 	idSucursal	INTEGER IDENTITY(1,1) PRIMARY KEY,
 	numeroSucursal	BIGINT,
-	idUbicacion INTEGER
+	direccion	VARCHAR(255)
 );
 GO
 -----------------------------------------------
@@ -125,116 +105,70 @@ GO
 -----------------------------------------------
 
 CREATE TABLE QUERYOSOS.BI_Pedido(
-	idPedido			INTEGER NOT NULL IDENTITY(1,1) PRIMARY KEY,
-	nroPedido			DECIMAL(18, 0),
-	fechaYhora			DATETIME,
-	precioTotal			DECIMAL(18,2),
-	idCliente			INTEGER,
-	idEstadoActual		INTEGER,
-	idSucursal			INTEGER,
-	fechaCancelacion	DATETIME,
-	idMotivoCancelacion	INTEGER,
+	idPedido		INTEGER IDENTITY(1,1) PRIMARY KEY,
+	idSucursal		INTEGER NOT NULL,
+	idTiempo		INTEGER NOT NULL,
+	idTurno			INTEGER NOT NULL,
+	idUbicacion		INTEGER NOT NULL,
+	idEstadoBI		INTEGER NOT NULL,
+	fechaYhora		DATETIME2,
+	precioTotal		DECIMAL(18,2),
+	estadoActual		INTEGER,
+	fechaCancelacion	DATETIME2,
+	motivoCancelacion	INTEGER,
 	cantidadPedidos		INTEGER,
-	idTiempo			INTEGER,
-	idTurno				INTEGER
 );
 GO
 
 CREATE TABLE QUERYOSOS.BI_Facturacion(
-	idFacturacion    BIGINT NOT NULL IDENTITY(1,1) PRIMARY KEY,
-	idRangoEtario    INTEGER,
-	idSucursal       INTEGER,
-	fechaYHora       DATETIME,
-	importeTotal     DECIMAL(18,2),
+	idFacturacion    BIGINT IDENTITY(1,1) PRIMARY KEY,
+	idRangoEtario    INTEGER NOT NULL,
+	idSucursal       INTEGER NOT NULL,
+	idTiempo         INTEGER NOT NULL,
+	idModelo         BIGINT NOT NULL,
+	idUbicacion	 INTEGER NOT NULL,
+	fechaYHora       DATETIME2,
+	importeTotal     DECIMAL(38,2),
 	promedioMensual  DECIMAL(18,2),
-	idTiempo         INTEGER,
-	modelo_sillon    VARCHAR(100),
 );
 GO
 
 CREATE TABLE QUERYOSOS.BI_Envio (
-	idEnvio            DECIMAL(18,0) NOT NULL PRIMARY KEY,
-	idFacturacion		BIGINT,
-	fechaProgramada		DATETIME,
-	fechaHoraEntrega	DATETIME,
-	envioTotal			DECIMAL(18,2),
-	idTiempo			INTEGER,
-	idUbicacion			INTEGER,
-	localidadMayorEnvio INTEGER,
+	idEnvio              DECIMAL(18,0) PRIMARY KEY,
+	idTiempo	     INTEGER NOT NULL,
+	idUbicacion	     INTEGER NOT NULL,
+	fechaProgramada	     DATETIME2,
+	fechaHoraEntrega     DATETIME2,
+	envioTotal	     DECIMAL(18,2),
+	localidadMayorEnvio  INTEGER,
   );
 GO
 
 CREATE TABLE QUERYOSOS.BI_Compra (
-	idCompra           INTEGER IDENTITY(1,1) PRIMARY KEY,
-	idTiempo           INTEGER,
-	importePromedio    DECIMAL(12,2),
-	idMaterial	       INTEGER
-);
-GO
-
-CREATE TABLE QUERYOSOS.BI_CompraMaterial (
-  idMaterial	INTEGER,
-  idCompra      INTEGER,
-  idSucursal    INTEGER,
-  idTiempo      INTEGER,
-  PRIMARY KEY (idMaterial, idCompra, idSucursal, idTiempo)
+	idCompra        INTEGER IDENTITY(1,1) PRIMARY KEY,
+	idTiempo        INTEGER NOT NULL,
+	idMaterial	INTEGER NOT NULL,
+	idSucursal      INTEGER NOT NULL,
+	importePromedio DECIMAL(12,2),
 );
 GO
 
 CREATE TABLE QUERYOSOS.BI_Fabricacion (
-  idFabricacion     INTEGER IDENTITY(1,1) PRIMARY KEY,
-  idTiempo          INTEGER,
-  idPedido          INTEGER,
-  idFacturacion     BIGINT,
-  tiempoPromedio    INTEGER
+  idPedido       INTEGER IDENTITY(1,1) PRIMARY KEY,
+  idTiempo       INTEGER NOT NULL,
+  tiempoPromedio INTEGER
 );
 GO
 
 CREATE TABLE QUERYOSOS.BI_Ganancia (
   idGanancia        INTEGER IDENTITY(1,1) PRIMARY KEY,
-  idTiempo          INTEGER,
+  idTiempo          INTEGER NOT NULL,
+  idSucursal	    INTEGER NOT NULL,
+  idUbicacion	    INTEGER NOT NULL,
   totalIngresos     DECIMAL(12,2),
-  idSucursal        INTEGER
+  totalEgresos      DECIMAL(12,2),
+  gananciaTotal     DECIMAL(12,2),
 );
-GO
-
-
-
-----------------------------------
--------- CREACION DE FKs ---------
-----------------------------------
-
-
--- FOREIGN KEY para BI_ModeloSillon
-ALTER TABLE QUERYOSOS.BI_ModeloSillon
-ADD CONSTRAINT FK_BI_ModeloSillon_Rango
-FOREIGN KEY (idRango) REFERENCES QUERYOSOS.BI_RangoEtario(idRango);
-
-ALTER TABLE QUERYOSOS.BI_ModeloSillon
-ADD CONSTRAINT FK_BI_ModeloSillon_Facturacion
-FOREIGN KEY (idFacturacion) REFERENCES QUERYOSOS.BI_Facturacion(idFacturacion);
-
-ALTER TABLE QUERYOSOS.BI_ModeloSillon
-ADD CONSTRAINT FK_BI_ModeloSillon_Tiempo
-FOREIGN KEY (idTiempo) REFERENCES QUERYOSOS.BI_Tiempo(idTiempo);
-
--- FOREIGN KEY para BI_EstadoPedido
-ALTER TABLE QUERYOSOS.BI_EstadoPedido
-ADD CONSTRAINT FK_BI_EstadoPedido_Estado
-FOREIGN KEY (idEstado) REFERENCES QUERYOSOS.Estado(idEstado);
-
-ALTER TABLE QUERYOSOS.BI_Cliente
-ADD CONSTRAINT FK_Cliente_Ubicacion
-FOREIGN KEY (idUbicacion) REFERENCES QUERYOSOS.BI_Ubicacion(idUbicacion);
-
-ALTER TABLE QUERYOSOS.BI_Cliente
-ADD CONSTRAINT FK_Cliente_RangoEtario
-FOREIGN KEY (idRangoEtario) REFERENCES QUERYOSOS.BI_RangoEtario(idRango);
-GO
-
-ALTER TABLE QUERYOSOS.BI_SUCURSAL
-ADD CONSTRAINT FK_Sucursal_Ubicacion 
-FOREIGN KEY (idUbicacion) REFERENCES QUERYOSOS.BI_Ubicacion(idUbicacion);
 GO
 
 --------------------------------------------------------
@@ -243,19 +177,19 @@ GO
 
 UPDATE QUERYOSOS.BI_RangoEtario
 SET desdeEdad =   0, hastaEdad =  24
-WHERE idRango = 1;
+WHERE idRangoEtario = 1;
 
 UPDATE QUERYOSOS.BI_RangoEtario
 SET desdeEdad =  25, hastaEdad =  35
-WHERE idRango = 2;
+WHERE idRangoEtario = 2;
 
 UPDATE QUERYOSOS.BI_RangoEtario
 SET desdeEdad =  36, hastaEdad =  50
-WHERE idRango = 3;
+WHERE idRangoEtario = 3;
 
 UPDATE QUERYOSOS.BI_RangoEtario
 SET desdeEdad =  51, hastaEdad = 500
-WHERE idRango = 4;
+WHERE idRangoEtario = 4;
 GO
 
 --------------------------------------------------------
@@ -264,87 +198,90 @@ GO
 
 -- BI_Pedido
 ALTER TABLE QUERYOSOS.BI_Pedido
-  ADD CONSTRAINT FK_estadoActual		FOREIGN KEY (idEstadoActual)
-    REFERENCES QUERYOSOS.BI_EstadoPedido(idEstado);
+ADD CONSTRAINT FK_idBISucursal		
+FOREIGN KEY (idSucursal) REFERENCES QUERYOSOS.BI_Sucursal(idSucursal);
+
 ALTER TABLE QUERYOSOS.BI_Pedido
-  ADD CONSTRAINT FK_idBISucursal		FOREIGN KEY (idSucursal)
-    REFERENCES QUERYOSOS.BI_Sucursal(idSucursal);
+ADD CONSTRAINT FK_Pedido_Tiempo		
+FOREIGN KEY (idTiempo) REFERENCES QUERYOSOS.BI_Tiempo(idTiempo);
+
 ALTER TABLE QUERYOSOS.BI_Pedido
-  ADD CONSTRAINT FK_Pedido_Tiempo		FOREIGN KEY (idTiempo)
-    REFERENCES QUERYOSOS.BI_Tiempo(idTiempo);
+ADD CONSTRAINT FK_Pedido_Turno		
+FOREIGN KEY (idTurno) REFERENCES QUERYOSOS.BI_Turno(idTurno);
+
 ALTER TABLE QUERYOSOS.BI_Pedido
-  ADD CONSTRAINT FK_Pedido_Turno		FOREIGN KEY (idTurno)
-    REFERENCES QUERYOSOS.BI_Turno(idTurno);
+ADD CONSTRAINT FK_Pedido_idUbicacion
+FOREIGN KEY (idUbicacion) REFERENCES QUERYOSOS.BI_Ubicacion(idUbicacion);
+
 ALTER TABLE QUERYOSOS.BI_Pedido
-  ADD CONSTRAINT FK_Pedido_idCliente	FOREIGN KEY (idCliente)
-    REFERENCES QUERYOSOS.BI_Cliente(idCliente);
---desnormalizo hecho
-ALTER TABLE QUERYOSOS.BI_Pedido
-  ADD CONSTRAINT FK_Pedido_id_motivo_cancelacion	FOREIGN KEY (idMotivoCancelacion)
-    REFERENCES QUERYOSOS.BI_MotivoCancelacion(idMotivoCancelacion);
+ADD CONSTRAINT FK_estadoActual		
+FOREIGN KEY (idEstadoBI) REFERENCES QUERYOSOS.BI_EstadoPedido(idEstadoBI);
+
 
 -- BI_Facturacion
 ALTER TABLE QUERYOSOS.BI_Facturacion
-  ADD CONSTRAINT FK_Facturacion_Rango     FOREIGN KEY (idRangoEtario)
-    REFERENCES QUERYOSOS.BI_RangoEtario(idRango);
+ADD CONSTRAINT FK_Facturacion_Rango     
+FOREIGN KEY (idRangoEtario) REFERENCES QUERYOSOS.BI_RangoEtario(idRangoEtario);
+
 ALTER TABLE QUERYOSOS.BI_Facturacion
-  ADD CONSTRAINT FK_Facturacion_Sucursal  FOREIGN KEY (idSucursal)
-    REFERENCES QUERYOSOS.BI_Sucursal(idSucursal);
+ADD CONSTRAINT FK_Facturacion_Sucursal  
+FOREIGN KEY (idSucursal) REFERENCES QUERYOSOS.BI_Sucursal(idSucursal);
+
 ALTER TABLE QUERYOSOS.BI_Facturacion
-  ADD CONSTRAINT FK_Facturacion_Tiempo    FOREIGN KEY (idTiempo)
-    REFERENCES QUERYOSOS.BI_Tiempo(idTiempo);
+ADD CONSTRAINT FK_Facturacion_Tiempo    
+FOREIGN KEY (idTiempo) REFERENCES QUERYOSOS.BI_Tiempo(idTiempo);
+
+ALTER TABLE QUERYOSOS.BI_Facturacion
+ADD CONSTRAINT FK_Facturacion_Modelo   
+FOREIGN KEY (idModelo) REFERENCES QUERYOSOS.BI_Modelo(idModelo);
+
+ALTER TABLE QUERYOSOS.BI_Facturacion
+ADD CONSTRAINT FK_Facturacion_Ubicacion   
+FOREIGN KEY (idUbicacion) REFERENCES QUERYOSOS.BI_Ubicacion(idUbicacion);
+
 
 -- BI_Envio
 ALTER TABLE QUERYOSOS.BI_Envio
-  ADD CONSTRAINT FK_Envio_Facturacion  FOREIGN KEY (idFacturacion)
-    REFERENCES QUERYOSOS.BI_Facturacion(idFacturacion);
+ADD CONSTRAINT FK_Envio_Tiempo        
+FOREIGN KEY (idTiempo) REFERENCES QUERYOSOS.BI_Tiempo(idTiempo);
+
 ALTER TABLE QUERYOSOS.BI_Envio
-  ADD CONSTRAINT FK_Envio_Tiempo        FOREIGN KEY (idTiempo)
-    REFERENCES QUERYOSOS.BI_Tiempo(idTiempo);
-ALTER TABLE QUERYOSOS.BI_Envio
-  ADD CONSTRAINT FK_Envio_Ubicacion     FOREIGN KEY (idUbicacion)
-    REFERENCES QUERYOSOS.BI_Ubicacion(idUbicacion);
+ADD CONSTRAINT FK_Envio_Ubicacion     
+FOREIGN KEY (idUbicacion) REFERENCES QUERYOSOS.BI_Ubicacion(idUbicacion);
+
 
 -- BI_Compra
 ALTER TABLE QUERYOSOS.BI_Compra
-  ADD CONSTRAINT FK_Compra_Tiempo       FOREIGN KEY (idTiempo)
-    REFERENCES QUERYOSOS.BI_Tiempo(idTiempo);
-ALTER TABLE QUERYOSOS.BI_Compra
-  ADD CONSTRAINT FK_Compra_Material     FOREIGN KEY (idMaterial)
-    REFERENCES QUERYOSOS.BI_Material(idMaterial);
+ADD CONSTRAINT FK_Compra_Tiempo       
+FOREIGN KEY (idTiempo) REFERENCES QUERYOSOS.BI_Tiempo(idTiempo);
 
--- BI_Compra_Material
-ALTER TABLE QUERYOSOS.BI_CompraMaterial
-  ADD CONSTRAINT FK_Cm_Material         FOREIGN KEY (idMaterial)
-    REFERENCES QUERYOSOS.BI_Material(idMaterial);
-ALTER TABLE QUERYOSOS.BI_CompraMaterial
-  ADD CONSTRAINT FK_Cm_Compra           FOREIGN KEY (idCompra)
-    REFERENCES QUERYOSOS.BI_Compra(idCompra);
-ALTER TABLE QUERYOSOS.BI_CompraMaterial
-  ADD CONSTRAINT FK_Cm_Sucursal         FOREIGN KEY (idSucursal)
-    REFERENCES QUERYOSOS.BI_Sucursal(idSucursal);
-ALTER TABLE QUERYOSOS.BI_CompraMaterial
-  ADD CONSTRAINT FK_Cm_Tiempo           FOREIGN KEY (idTiempo)
-    REFERENCES QUERYOSOS.BI_Tiempo(idTiempo);
+ALTER TABLE QUERYOSOS.BI_Compra
+ADD CONSTRAINT FK_Compra_Material     
+FOREIGN KEY (idMaterial) REFERENCES QUERYOSOS.BI_Material(idMaterial);
+
+ALTER TABLE QUERYOSOS.BI_Compra
+ADD CONSTRAINT FK_Compra_Sucursal     
+FOREIGN KEY (idSucursal) REFERENCES QUERYOSOS.BI_Sucursal(idSucursal);
+
 
 -- BI_Fabricacion
 ALTER TABLE QUERYOSOS.BI_Fabricacion
-  ADD CONSTRAINT FK_Fab_Tiempo          FOREIGN KEY (idTiempo)
-    REFERENCES QUERYOSOS.BI_Tiempo(idTiempo);
-ALTER TABLE QUERYOSOS.BI_Fabricacion
-  ADD CONSTRAINT FK_Fab_Pedido          FOREIGN KEY (idPedido)
-    REFERENCES QUERYOSOS.BI_Pedido(idPedido);
-ALTER TABLE QUERYOSOS.BI_Fabricacion
-  ADD CONSTRAINT FK_Fab_Facturacion     FOREIGN KEY (idFacturacion)
-    REFERENCES QUERYOSOS.BI_Facturacion(idFacturacion);
+ADD CONSTRAINT FK_Fab_Tiempo          
+FOREIGN KEY (idTiempo) REFERENCES QUERYOSOS.BI_Tiempo(idTiempo);
 
 -- BI_Ganancia
 ALTER TABLE QUERYOSOS.BI_Ganancia
-  ADD CONSTRAINT FK_Gan_Tiempo          FOREIGN KEY (idTiempo)
-    REFERENCES QUERYOSOS.BI_Tiempo(idTiempo);
+ADD CONSTRAINT FK_Gan_Tiempo          
+FOREIGN KEY (idTiempo) REFERENCES QUERYOSOS.BI_Tiempo(idTiempo);
+
 ALTER TABLE QUERYOSOS.BI_Ganancia
-  ADD CONSTRAINT FK_Gan_Sucursal        FOREIGN KEY (idSucursal)
-    REFERENCES QUERYOSOS.BI_Sucursal(idSucursal);
+ADD CONSTRAINT FK_Gan_Sucursal        
+FOREIGN KEY (idSucursal) REFERENCES QUERYOSOS.BI_Sucursal(idSucursal);
+
+ALTER TABLE QUERYOSOS.BI_Ganancia
+ADD CONSTRAINT FK_Gan_Ubicacion        
+FOREIGN KEY (idUbicacion) REFERENCES QUERYOSOS.BI_Ubicacion(idUbicacion);
+
 GO
 
 -----------------------------
@@ -376,7 +313,7 @@ AS
 BEGIN
     DECLARE @Rango INT;
 
-    SELECT @Rango = idRango
+    SELECT @Rango = idRangoEtario
       FROM QUERYOSOS.BI_RangoEtario
      WHERE @Edad BETWEEN desdeEdad AND hastaEdad;
 
@@ -425,7 +362,7 @@ GO
 
 CREATE PROCEDURE QUERYOSOS.BI_MigrarRangoEtario AS
 BEGIN 
-	INSERT INTO QUERYOSOS.BI_RangoEtario(desdeEdad, hastaEdad, descripcion)
+	INSERT INTO QUERYOSOS.BI_RangoEtario(desdeEdad, hastaEdad)
     SELECT DISTINCT
         CASE 
             WHEN DATEDIFF(year, fechaNacimiento, GETDATE()) < 25 THEN 0
@@ -540,11 +477,10 @@ EXEC QUERYOSOS.BI_MigrarSucursales
 EXEC QUERYOSOS.BI_MigrarMaterial
 EXEC QUERYOSOS.BI_MigrarEstadoPedido
 EXEC QUERYOSOS.BI_MigrarTurnos
-EXEC QUERYOSOS.BI_MigrarFacturacion
+--EXEC QUERYOSOS.BI_MigrarFacturacion
 GO
 -------------------------------------
 --------------- TESTS ---------------
 -------------------------------------
 --SELECT * FROM QUERYOSOS.BI_Tiempo ORDER BY anio, mes;
-
 
