@@ -903,15 +903,22 @@ BEGIN
     m.Detalle_Pedido_Precio,
 	m.Factura_Numero
   FROM gd_esquema.Maestra AS m
+  --JOIN QUERYOSOS.Factura f on f.nroFactura = m.Factura_Numero (*)
   INNER JOIN QUERYOSOS.Pedido AS p
     ON p.nroDePedido = m.Pedido_Numero
    LEFT JOIN QUERYOSOS.Sillon AS s
    on s.SillonModeloCodigo = m.Sillon_Modelo_Codigo
    LEFT JOIN QUERYOSOS.Medida medida on s.idMedidaSillon=medida.idMedidaSillon
-   where Detalle_Pedido_Cantidad is not null and Detalle_Pedido_SubTotal is not null and Sillon_Codigo is not null
+   where Detalle_Pedido_Cantidad is not null and Detalle_Pedido_SubTotal is not null and Sillon_Codigo is not null 
+   -- pareciera que todos los pedidos que tienen modelos asociados no tienen nro de factura... sin esto "and Sillon_Codigo is not null" arroja resultados por lo menos
 END;
 GO
 
+/*
+(*) Sin esta linea, hay 72003 filas. Si sacamos lo de "and Sillon_Codigo is not null" son 133090
+Con esa linea y ejecutando todo el SELECT, nos quedan 0 renglones. Si no ejecutamos "and Sillon_Codigo is not null" son 61087
+No se está joineando por la PK pero ItemDetallePedido es la unica entidad q relaciona un pedido y una factura. Quizás se podría agregar una FK de Factura directamente a Pedido?
+*/
 
 ----------------------------------------------------------------
 ----MIGRAMOS DATOS A LA TABLA DETALLECOMPRA -----------
