@@ -10,7 +10,7 @@ DROP PROCEDURE IF EXISTS QUERYOSOS.BI_MigrarMaterial
 DROP PROCEDURE IF EXISTS QUERYOSOS.BI_MigrarEstadoPedido
 DROP PROCEDURE IF EXISTS QUERYOSOS.BI_MigrarTurnos
 DROP PROCEDURE IF EXISTS QUERYOSOS.BI_MigrarFacturacion
-
+DROP PROCEDURE IF EXISTS QUERYOSOS.BI_MigrarModelos
 GO
 ------luego dropeamos las funciones si ya existen-----
 DROP FUNCTION IF EXISTS QUERYOSOS.CUATRIMESTRE
@@ -455,6 +455,24 @@ BEGIN
 END
 GO
 
+CREATE PROCEDURE QUERYOSOS.BI_MigrarModelos AS 
+BEGIN
+	INSERT INTO QUERYOSOS.BI_Modelo(cantidadVentas, descripcion)
+	SELECT sum(itemped.cantidad_pedido), modelo.descripcion FROM QUERYOSOS.Modelo modelo 
+		JOIN QUERYOSOS.ItemDetallePedido itemped on itemped.sillon_modelo_codigo = modelo.sillon_modelo_codigo
+		JOIN QUERYOSOS.ItemDetallefactura itemfact on itemped.id_item_pedido = itemfact.id_item_pedido --AND itemped.nroFactura = itemfact.nroFactura (**)
+	GROUP BY descripcion
+
+	/*
+	(**) hasta ahi funciona bien (se supone). hay un problema con ItemDetallePedido en la migración que no relaciona el nroFactura bien, entonces estos select:
+
+	select nroFactura from QUERYOSOS.ItemDetallefactura order by 1 --> este responde los nros de factura
+	select nroFactura from QUERYOSOS.ItemDetallePedido order by 1 --> este responde todo null
+	
+	ver lineas 887-921 del otro script
+	*/
+
+
 --esto funciona salvo modelo sillon :(
 /* 
 CREATE PROCEDURE QUERYOSOS.BI_MigrarFacturacion AS
@@ -494,6 +512,7 @@ EXEC QUERYOSOS.BI_MigrarSucursales
 EXEC QUERYOSOS.BI_MigrarMaterial
 EXEC QUERYOSOS.BI_MigrarEstadoPedido
 EXEC QUERYOSOS.BI_MigrarTurnos
+EXEC QUERYOSOS.BI_MigrarModelos
 --EXEC QUERYOSOS.BI_MigrarFacturacion
 GO
 -------------------------------------

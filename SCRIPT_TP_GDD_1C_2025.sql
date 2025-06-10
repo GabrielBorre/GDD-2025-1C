@@ -893,13 +893,15 @@ BEGIN
     , cantidad_pedido
     , subtotal
     , precioUnitario
+	, nroFactura
     )
   SELECT DISTINCT
     m.Pedido_Numero,
     s.SillonModeloCodigo,                      
     m.Detalle_Pedido_Cantidad,
     m.Detalle_Pedido_SubTotal,
-    m.Detalle_Pedido_Precio
+    m.Detalle_Pedido_Precio,
+	m.Factura_Numero
   FROM gd_esquema.Maestra AS m
   INNER JOIN QUERYOSOS.Pedido AS p
     ON p.nroDePedido = m.Pedido_Numero
