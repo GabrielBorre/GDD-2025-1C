@@ -153,11 +153,12 @@ GO
 CREATE TABLE QUERYOSOS.BI_Compra (
 	idPedido        INTEGER IDENTITY(1,1),
 	idTiempo        INTEGER NOT NULL,
-	idMaterial	INTEGER NOT NULL,
+	idMaterial	    INTEGER NOT NULL,
 	idSucursal      INTEGER NOT NULL,
+	idUbicacion		INTEGER NOT NULL,
 	importePromedio DECIMAL(12,2),
 
-	PRIMARY KEY (idPedido, idTiempo, idMaterial, idSucursal)
+	PRIMARY KEY (idPedido, idTiempo, idMaterial, idSucursal, idUbicacion)
 );
 GO
 
@@ -275,6 +276,10 @@ FOREIGN KEY (idMaterial) REFERENCES QUERYOSOS.BI_Material(idMaterial);
 ALTER TABLE QUERYOSOS.BI_Compra
 ADD CONSTRAINT FK_Compra_Suc     -- ya tenemos una FK llamada FK_Compra_Sucursal en el otro script en QUERYOSOS.Compra
 FOREIGN KEY (idSucursal) REFERENCES QUERYOSOS.BI_Sucursal(idSucursal);
+
+ALTER TABLE QUERYOSOS.BI_Compra -- agrego FK a ubicacion
+ADD CONSTRAINT FK_Compra_Ubicacion
+FOREIGN KEY (idUbicacion) REFERENCES QUERYOSOS.BI_Ubicacion(idUbicacion);
 
 
 -- BI_Fabricacion
@@ -412,7 +417,7 @@ GO
 
 CREATE PROCEDURE QUERYOSOS.BI_MigrarSucursales AS
 BEGIN 
-	INSERT INTO QUERYOSOS.BI_Sucursal(numeroSucursal, idUbicacion)
+	INSERT INTO QUERYOSOS.BI_Sucursal(numeroSucursal, direccion)
 	SELECT DISTINCT 
 		numeroSucursal, 
 		u.idUbicacion
@@ -422,7 +427,7 @@ BEGIN
 	JOIN QUERYOSOS.BI_Ubicacion AS u
 		on u.provincia = p.nombre
 		AND u.localidad = l.nombre
-		AND u.direccion = d.direccion;
+		AND u.direccion = d.direccion; -- acá estamos igualando el string, no el id de la direccion
 
 END
 GO
@@ -449,6 +454,7 @@ BEGIN
 		('14:00 - 20:00')
 END
 GO
+
 --esto funciona salvo modelo sillon :(
 /* 
 CREATE PROCEDURE QUERYOSOS.BI_MigrarFacturacion AS
