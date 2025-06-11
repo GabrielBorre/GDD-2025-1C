@@ -65,7 +65,7 @@ GO
 CREATE TABLE QUERYOSOS.BI_RangoEtario (
   idRangoEtario 	INTEGER IDENTITY(1,1) PRIMARY KEY,
   desdeEdad		INTEGER,
-  hastaEdad		INTEGER,
+  hastaEdad		INTEGER
 );
 GO
 
@@ -84,7 +84,7 @@ GO
 CREATE TABLE QUERYOSOS.BI_Modelo (
    idModelo	  BIGINT IDENTITY(1,1)  PRIMARY KEY,
    cantidadVentas DECIMAL(18,0),
-   descripcion	  NVARCHAR(255),
+   descripcion	  NVARCHAR(255)
 );
 GO
 
@@ -165,7 +165,7 @@ GO
 CREATE TABLE QUERYOSOS.BI_Fabricacion (
   idPedido       INTEGER IDENTITY(1,1),
   idTiempo       INTEGER NOT NULL,
-  tiempoPromedio INTEGER
+  tiempoPromedio INTEGER,
 
   PRIMARY KEY (idPedido, idTiempo)
 
@@ -486,7 +486,7 @@ BEGIN
 	(SELECT AVG(f2.importeTotal) FROM QUERYOSOS.Factura f2 
 		WHERE YEAR(f2.fechaYhora)  = YEAR(f.fechaYhora) AND MONTH(f2.fechaYhora) = MONTH(f.fechaYhora) AND f2.idSucursal = f.idSucursal),
 	(SELECT t.idTiempo FROM QUERYOSOS.BI_Tiempo AS t WHERE t.anio = YEAR(f.fechaYHora) AND t.mes = MONTH(f.fechaYHora)),
-	(SELECT TOP 1 m.descripcion FROM QUERYOSOS.ItemDetallePedido i JOIN QUERYOSOS.Modelo m on m.sillon_modelo_codigo = i.sillon_modelo_codigo
+	(SELECT TOP 1 m.descripcion FROM QUERYOSOS.ItemDetallePedido i JOIN QUERYOSOS.	 m on m.sillon_modelo_codigo = i.sillon_modelo_codigo
 	WHERE i.nroFactura = f.nroFactura GROUP BY m.descripcion order by SUM(i.cantidad_pedido))
 	FROM QUERYOSOS.Factura f JOIN QUERYOSOS.Cliente c on c.idCliente = f.idCliente
 END
