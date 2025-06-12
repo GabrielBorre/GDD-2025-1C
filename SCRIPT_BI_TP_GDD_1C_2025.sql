@@ -11,6 +11,8 @@ DROP PROCEDURE IF EXISTS QUERYOSOS.BI_MigrarEstadoPedido
 DROP PROCEDURE IF EXISTS QUERYOSOS.BI_MigrarTurnos
 DROP PROCEDURE IF EXISTS QUERYOSOS.BI_MigrarFacturacion
 DROP PROCEDURE IF EXISTS QUERYOSOS.BI_MigrarModelos
+DROP PROCEDURE IF EXISTS QUERYOSOS.BI_MigrarPedido
+DROP PROCEDURE IF EXISTS QUERYOSOS.BI_MigrarEnvio
 GO
 ------luego dropeamos las funciones si ya existen-----
 DROP FUNCTION IF EXISTS QUERYOSOS.CUATRIMESTRE
@@ -71,7 +73,9 @@ GO
 
 CREATE TABLE QUERYOSOS.BI_Turno (
   idTurno       INTEGER IDENTITY(1,1) PRIMARY KEY,
-  descripcion   VARCHAR(50)
+  desde TIME NOT NULL,
+  hasta TIME NOT NULL
+
 );
 GO
 
@@ -117,6 +121,7 @@ CREATE TABLE QUERYOSOS.BI_Pedido(
 	fechaCancelacion	DATETIME2,
 	motivoCancelacion	INTEGER,
 	cantidadPedidos		INTEGER,
+	nroPedido			DECIMAL(18,0)
 	
 	PRIMARY KEY (idPedido, idSucursal, idTiempo, idTurno, idUbicacion, idEstadoBI)
 );
@@ -129,23 +134,23 @@ CREATE TABLE QUERYOSOS.BI_Facturacion(
 	idTiempo         INTEGER NOT NULL,
 	idModelo         BIGINT NOT NULL,
 	idUbicacion		 INTEGER NOT NULL,
-	fechaYHora       DATETIME2,
-	importeTotal     DECIMAL(38,2),
-	promedioMensual  DECIMAL(18,2),
+	--fechaYHora       DATETIME2,
+	nroFactura		 BIGINT,
+	subtotal_item_factura  DECIMAL(18,2),
 
 	PRIMARY KEY (idPedido, idRangoEtario, idSucursal, idTiempo, idModelo, idUbicacion)
 );
 GO
 
 CREATE TABLE QUERYOSOS.BI_Envio (
-	idPedido              DECIMAL(18,0),
+	idPedido              BIGINT IDENTITY(1,1),
 	idTiempo			  INTEGER NOT NULL,
 	idUbicacion			  INTEGER NOT NULL,
 	fechaProgramada	      DATETIME2,
 	fechaHoraEntrega      DATETIME2,
 	envioTotal			  DECIMAL(18,2),
 	localidadMayorEnvio   INTEGER,
-
+	nroEnvio			  DECIMAL(18,0)
 	PRIMARY KEY (idPedido, idTiempo, idUbicacion)
   );
 GO
@@ -402,6 +407,8 @@ BEGIN
 END
 GO
 
+
+
 CREATE PROCEDURE QUERYOSOS.BI_MigrarUbicaciones AS
 BEGIN 
 	INSERT INTO QUERYOSOS.BI_Ubicacion(provincia, localidad, direccion)
@@ -420,14 +427,14 @@ BEGIN
 	INSERT INTO QUERYOSOS.BI_Sucursal(numeroSucursal, direccion)
 	SELECT DISTINCT 
 		numeroSucursal, 
-		u.idUbicacion
+		u.direccion
 	FROM QUERYOSOS.Sucursal s JOIN QUERYOSOS.Direccion d  on s.idDireccion = d.idDireccion
 	JOIN QUERYOSOS.Localidad l on d.idLocalidad = l.idLocalidad
 	JOIN QUERYOSOS.Provincia p on l.idProvincia = p.idProvincia
 	JOIN QUERYOSOS.BI_Ubicacion AS u
 		on u.provincia = p.nombre
 		AND u.localidad = l.nombre
-		AND u.direccion = d.direccion; -- acá estamos igualando el string, no el id de la direccion
+		AND u.direccion = d.direccion; -- acï¿½ estamos igualando el string, no el id de la direccion
 
 END
 GO
@@ -446,54 +453,70 @@ BEGIN
 END
 GO
 
-CREATE PROCEDURE QUERYOSOS.BI_MigrarTurnos AS
+CREATE PROCEDURE QUERYOSOS.BI_MigrarTurnos
+AS
 BEGIN 
-	INSERT INTO QUERYOSOS.BI_Turno(descripcion)
+	INSERT INTO QUERYOSOS.BI_Turno(desde, hasta)
 	VALUES 
-		('8:00 - 14:00'),
-		('14:00 - 20:00')
+		('08:00', '13:59'),
+		('14:00', '20:00');
 END
 GO
+
+
+
+
+
 
 CREATE PROCEDURE QUERYOSOS.BI_MigrarModelos AS 
 BEGIN
-	INSERT INTO QUERYOSOS.BI_Modelo(cantidadVentas, descripcion)
-	SELECT sum(itemped.cantidad_pedido), modelo.descripcion FROM QUERYOSOS.Modelo modelo 
-		JOIN QUERYOSOS.ItemDetallePedido itemped on itemped.sillon_modelo_codigo = modelo.sillon_modelo_codigo
-		JOIN QUERYOSOS.ItemDetallefactura itemfact on itemped.id_item_pedido = itemfact.id_item_pedido --AND itemped.nroFactura = itemfact.nroFactura (**)
-	GROUP BY descripcion
-
-	/*
-	(**) hasta ahi funciona bien (se supone). hay un problema con ItemDetallePedido en la migración que no relaciona el nroFactura bien, entonces estos select:
-
-	select nroFactura from QUERYOSOS.ItemDetallefactura order by 1 --> este responde los nros de factura
-	select nroFactura from QUERYOSOS.ItemDetallePedido order by 1 --> este responde todo null
-	
-	ver lineas 887-921 del otro script
-	*/
+	INSERT INTO QUERYOSOS.BI_Modelo(descripcion)
+	SELECT descripcion FROM QUERYOSOS.Modelo
+END
+go
 
 
---esto funciona salvo modelo sillon :(
-/* 
-CREATE PROCEDURE QUERYOSOS.BI_MigrarFacturacion AS
+CREATE PROCEDURE QUERYOSOS.BI_MigrarFacturacion as
 BEGIN
-	INSERT INTO QUERYOSOS.BI_Facturacion(idRangoEtario, idSucursal, fechaYHora, 
-		importeTotal, promedioMensual, idTiempo, modelo_sillon)
-	SELECT QUERYOSOS.RANGO_EDAD(DATEDIFF(YEAR,c.fechaNacimiento, f.fechaYHora)),
-	f.idSucursal, 
-	f.fechaYhora,
-	f.importeTotal, 
-	(SELECT AVG(f2.importeTotal) FROM QUERYOSOS.Factura f2 
-		WHERE YEAR(f2.fechaYhora)  = YEAR(f.fechaYhora) AND MONTH(f2.fechaYhora) = MONTH(f.fechaYhora) AND f2.idSucursal = f.idSucursal),
-	(SELECT t.idTiempo FROM QUERYOSOS.BI_Tiempo AS t WHERE t.anio = YEAR(f.fechaYHora) AND t.mes = MONTH(f.fechaYHora)),
-	(SELECT TOP 1 m.descripcion FROM QUERYOSOS.ItemDetallePedido i JOIN QUERYOSOS.	 m on m.sillon_modelo_codigo = i.sillon_modelo_codigo
-	WHERE i.nroFactura = f.nroFactura GROUP BY m.descripcion order by SUM(i.cantidad_pedido))
-	FROM QUERYOSOS.Factura f JOIN QUERYOSOS.Cliente c on c.idCliente = f.idCliente
+	INSERT INTO QUERYOSOS.BI_Facturacion(idRangoEtario,idSucursal,idTiempo,idUbicacion,idModelo,nroFactura,subtotal_item_factura)
+	SELECT idRangoEtario,bi_suc.idSucursal,tiempo.idTiempo,bi_ubi.idUbicacion,bi_modelo.idModelo,fac.nroFactura,item_fac.detalle_factura_subtotal  FROM  QUERYOSOS.Factura fac JOIN QUERYOSOS.Cliente c on fac.idCliente=c.idCliente
+	JOIN QUERYOSOS.BI_RangoEtario rango on DATEDIFF(year, c.fechaNacimiento, GETDATE()) between rango.desdeEdad and rango.hastaEdad
+	JOIN QUERYOSOS.Sucursal suc on fac.idSucursal=suc.idSucursal JOIN QUERYOSOS.Direccion dire on suc.idDireccion=dire.idDireccion
+	JOIN QUERYOSOS.BI_Sucursal bi_suc on dire.direccion=bi_suc.direccion JOIN QUERYOSOS.BI_Ubicacion bi_ubi on dire.direccion=bi_ubi.direccion
+	JOIN QUERYOSOS.BI_Tiempo tiempo on tiempo.mes=month(fac.fechaYHora) and  tiempo.anio=year(fac.fechaYHora) JOIN QUERYOSOS.ItemDetallefactura item_fac
+	on item_fac.nroFactura=fac.nroFactura JOIN QUERYOSOS.ItemDetallePedido item_ped on item_ped.id_item_pedido=item_fac.id_item_pedido JOIN QUERYOSOS.Modelo
+	modelo on modelo.sillon_modelo_codigo=item_ped.sillon_modelo_codigo JOIN QUERYOSOS.BI_Modelo bi_modelo on bi_modelo.descripcion=modelo.descripcion
+	
+
+END
+go
+
+
+CREATE PROCEDURE QUERYOSOS.BI_MigrarPedido as
+BEGIN
+	INSERT INTO QUERYOSOS.BI_Pedido(idSucursal,idTiempo,idTurno,idUbicacion,idEstadoBI,nroPedido)
+	SELECT bi_sucu.idSucursal,bi_tiempo.idTiempo,bi_turno.idTurno,bi_ubi.idUbicacion,bi_estado.idEstadoBI,pedido.nroDePedido FROM QUERYOSOS.Pedido pedido join QUERYOSOS.Sucursal sucursal on pedido.idSucursal=sucursal.idSucursal
+	JOIN QUERYOSOS.Direccion dire on sucursal.idDireccion=dire.idDireccion JOIN QUERYOSOS.BI_Sucursal bi_sucu on bi_sucu.direccion=dire.direccion
+	JOIN QUERYOSOS.BI_Tiempo bi_tiempo on year(pedido.fechaYHora)=bi_tiempo.anio and month(pedido.fechaYHora)=bi_tiempo.mes JOIN QUERYOSOS.BI_Ubicacion bi_ubi on bi_ubi.direccion=dire.direccion
+	JOIN QUERYOSOS.Estado estado_pedido on estado_pedido.idEstado=pedido.estadoActual JOIN QUERYOSOS.BI_EstadoPedido bi_estado ON estado_pedido.estado=bi_estado.estado
+	JOIN QUERYOSOS.BI_Turno bi_turno on CAST(pedido.fechaYHora AS TIME) BETWEEN bi_turno.desde and bi_turno.hasta
+END
+
+GO
+
+CREATE PROCEDURE QUERYOSOS.BI_MigrarEnvio as
+BEGIN
+	INSERT INTO QUERYOSOS.BI_Envio(idTiempo,idUbicacion,nroEnvio,fechaHoraEntrega,fechaProgramada)
+	SELECT bi_tiempo.idTiempo,bi_ubi.idUbicacion,env.nroDeEnvio,env.fechaYHoraEntrega,env.fechaProgramada FROM QUERYOSOS.Envio env JOIN QUERYOSOS.BI_Tiempo bi_tiempo on year(env.fechaProgramada)=bi_tiempo.anio and month(env.fechaProgramada)=bi_tiempo.mes
+	JOIN QUERYOSOS.Factura fact on env.nroDeFactura=fact.nroFactura JOIN QUERYOSOS.Cliente clie on fact.idCliente=clie.idCliente
+	JOIN QUERYOSOS.Direccion dire on clie.idDireccion=dire.idDireccion JOIN QUERYOSOS.Localidad loca on loca.idLocalidad=dire.idLocalidad JOIN
+	QUERYOSOS.Provincia prov on prov.idProvincia=loca.idProvincia JOIN QUERYOSOS.BI_Ubicacion bi_ubi on bi_ubi.direccion=dire.direccion and bi_ubi.localidad=loca.nombre and bi_ubi.provincia=prov.nombre
 END
 GO
 
-SELECT * FROM QUERYOSOS.BI_Facturacion
-*/
+
+
+--CREATE PROCEDURE QUERYOSOS.BI_Migrar
 -------------------------------------
 ------- CREACION DE VISTAS ----------
 -------------------------------------
@@ -505,6 +528,8 @@ SELECT * FROM QUERYOSOS.BI_Facturacion
 -----------------------------------------
 ------------------------------------
 
+
+
 EXEC QUERYOSOS.BI_MigrarTiempo
 EXEC QUERYOSOS.BI_MigrarRangoEtario
 EXEC QUERYOSOS.BI_MigrarUbicaciones
@@ -513,10 +538,14 @@ EXEC QUERYOSOS.BI_MigrarMaterial
 EXEC QUERYOSOS.BI_MigrarEstadoPedido
 EXEC QUERYOSOS.BI_MigrarTurnos
 EXEC QUERYOSOS.BI_MigrarModelos
---EXEC QUERYOSOS.BI_MigrarFacturacion
-GO
+EXEC QUERYOSOS.BI_MigrarFacturacion
+EXEC QUERYOSOS.BI_MigrarPedido
+EXEC QUERYOSOS.BI_MigrarEnvio
+
+
+
+
 -------------------------------------
 --------------- TESTS ---------------
 -------------------------------------
 --SELECT * FROM QUERYOSOS.BI_Tiempo ORDER BY anio, mes;
-
