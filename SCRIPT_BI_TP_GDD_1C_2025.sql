@@ -23,6 +23,7 @@ GO
 
 ------luego dropeamos las vistas si ya existen-----
 DROP VIEW IF EXISTS QUERYOSOS.Ganancia_Total
+DROP VIEW IF EXISTS QUERYOSOS.Punto6_TiempoPromedioFabricacion
 DROP VIEW IF EXISTS QUERYOSOS.Punto7_PromedioCompras
 DROP VIEW IF EXISTS QUERYOSOS.Punto8_ComprasPorTipoMaterial 
 DROP VIEW IF EXISTS QUERYOSOS.Punto9_PorcentajeCumplimientoEnvios
@@ -142,7 +143,7 @@ CREATE TABLE QUERYOSOS.BI_Facturacion(
 	idTiempo         INTEGER NOT NULL,
 	idModelo         BIGINT NOT NULL,
 	idUbicacion		 INTEGER NOT NULL,
-	--fechaYHora       DATETIME2,
+	fechaYHora       DATETIME2,
 	nroFactura		 BIGINT,
 	subtotal_item_factura  DECIMAL(18,2),
 
@@ -465,11 +466,6 @@ BEGIN
 END
 GO
 
-
-
-
-
-
 CREATE PROCEDURE QUERYOSOS.BI_MigrarModelos AS 
 BEGIN
 	INSERT INTO QUERYOSOS.BI_Modelo(descripcion)
@@ -480,8 +476,8 @@ go
 
 CREATE PROCEDURE QUERYOSOS.BI_MigrarFacturacion as
 BEGIN
-	INSERT INTO QUERYOSOS.BI_Facturacion(idRangoEtario,idSucursal,idTiempo,idUbicacion,idModelo,nroFactura,subtotal_item_factura)
-	SELECT idRangoEtario,bi_suc.idSucursal,tiempo.idTiempo,bi_ubi.idUbicacion,bi_modelo.idModelo,fac.nroFactura,item_fac.detalle_factura_subtotal  FROM  QUERYOSOS.Factura fac JOIN QUERYOSOS.Cliente c on fac.idCliente=c.idCliente
+	INSERT INTO QUERYOSOS.BI_Facturacion(idRangoEtario,idSucursal,idTiempo,idUbicacion,idModelo,nroFactura,subtotal_item_factura, fechaYHora)
+	SELECT idRangoEtario,bi_suc.idSucursal,tiempo.idTiempo,bi_ubi.idUbicacion,bi_modelo.idModelo,fac.nroFactura,item_fac.detalle_factura_subtotal, factura.fechaYHora  FROM  QUERYOSOS.Factura fac JOIN QUERYOSOS.Cliente c on fac.idCliente=c.idCliente
 	JOIN QUERYOSOS.BI_RangoEtario rango on DATEDIFF(year, c.fechaNacimiento, GETDATE()) between rango.desdeEdad and rango.hastaEdad
 	JOIN QUERYOSOS.Sucursal suc on fac.idSucursal=suc.idSucursal JOIN QUERYOSOS.Direccion dire on suc.idDireccion=dire.idDireccion
 	JOIN QUERYOSOS.BI_Sucursal bi_suc on dire.direccion=bi_suc.direccion JOIN QUERYOSOS.Localidad loca on dire.idLocalidad=loca.idLocalidad 
@@ -490,7 +486,7 @@ BEGIN
 	JOIN QUERYOSOS.BI_Tiempo tiempo on tiempo.mes=month(fac.fechaYHora) and  tiempo.anio=year(fac.fechaYHora) JOIN QUERYOSOS.ItemDetallefactura item_fac
 	on item_fac.nroFactura=fac.nroFactura JOIN QUERYOSOS.ItemDetallePedido item_ped on item_ped.id_item_pedido=item_fac.id_item_pedido JOIN QUERYOSOS.Modelo
 	modelo on modelo.sillon_modelo_codigo=item_ped.sillon_modelo_codigo JOIN QUERYOSOS.BI_Modelo bi_modelo on bi_modelo.descripcion=modelo.descripcion
-	
+	JOIN QUERYOSOS.Factura factura on factura.nroFactura = item_fac.nroFactura
 
 END
 go
@@ -498,8 +494,9 @@ go
 
 CREATE PROCEDURE QUERYOSOS.BI_MigrarPedido as
 BEGIN
-	INSERT INTO QUERYOSOS.BI_Pedido(idSucursal,idTiempo,idTurno,idUbicacion,idEstadoBI,nroPedido)
-	SELECT bi_sucu.idSucursal,bi_tiempo.idTiempo,bi_turno.idTurno,bi_ubi.idUbicacion,bi_estado.idEstadoBI,pedido.nroDePedido FROM QUERYOSOS.Pedido pedido join QUERYOSOS.Sucursal sucursal on pedido.idSucursal=sucursal.idSucursal
+	INSERT INTO QUERYOSOS.BI_Pedido(idSucursal,idTiempo,idTurno,idUbicacion,idEstadoBI,nroPedido, fechaYhora, precioTotal, estadoActual, fechaCancelacion, motivoCancelacion)
+	SELECT bi_sucu.idSucursal,bi_tiempo.idTiempo,bi_turno.idTurno,bi_ubi.idUbicacion,bi_estado.idEstadoBI,pedido.nroDePedido, pedido.fechaYHora, pedido.precioTotal, pedido.estadoActual, pedido.fechaCancelacion, pedido.idMotivoCancelacion 
+	FROM QUERYOSOS.Pedido pedido join QUERYOSOS.Sucursal sucursal on pedido.idSucursal=sucursal.idSucursal
 	JOIN QUERYOSOS.Direccion dire on sucursal.idDireccion=dire.idDireccion JOIN QUERYOSOS.BI_Sucursal bi_sucu on bi_sucu.direccion=dire.direccion
 	JOIN QUERYOSOS.BI_Tiempo bi_tiempo on year(pedido.fechaYHora)=bi_tiempo.anio and month(pedido.fechaYHora)=bi_tiempo.mes JOIN QUERYOSOS.Localidad loca on loca.idLocalidad=dire.idLocalidad
 	JOIN QUERYOSOS.Provincia provincia on provincia.idProvincia=loca.idProvincia JOIN QUERYOSOS.BI_Ubicacion bi_ubi on bi_ubi.localidad=loca.nombre and bi_ubi.provincia=provincia.nombre and bi_ubi.direccion=dire.direccion
@@ -570,6 +567,14 @@ SELECT bi_tiempo.mes mes, bi_sucursal.idSucursal sucursal, (SELECT sum(isnull(su
 FROM QUERYOSOS.BI_Tiempo bi_tiempo CROSS JOIN QUERYOSOS.BI_Sucursal bi_sucursal
 GO
 
+--Punto 6:Tiempo promedio fabricacion
+GO
+CREATE VIEW QUERYOSOS.Punto6_TiempoPromedioFabricacion AS
+SELECT p.idSucursal, t.cuatrimestre, AVG(ABS(DATEDIFF(MINUTE,p.fechaYhora,f.fechaYHora))) as promedioTiempo  FROM QUERYOSOS.BI_Pedido p JOIN QUERYOSOS.BI_Facturacion f on f.idPedido = p.idPedido 
+JOIN QUERYOSOS.BI_Tiempo t on t.idTiempo = p.idTiempo
+GROUP BY p.idSucursal, t.cuatrimestre
+GO
+
 --Punto 7: Promedio de compras
 GO
 CREATE VIEW QUERYOSOS.Punto7_PromedioCompras AS
@@ -614,3 +619,4 @@ GO
 -------------------------------------
 --------------- TESTS ---------------
 -------------------------------------
+SELECT * FROM QUERYOSOS.Punto6_TiempoPromedioFabricacion
