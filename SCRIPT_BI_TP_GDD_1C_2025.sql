@@ -13,6 +13,7 @@ DROP PROCEDURE IF EXISTS QUERYOSOS.BI_MigrarFacturacion
 DROP PROCEDURE IF EXISTS QUERYOSOS.BI_MigrarModelos
 DROP PROCEDURE IF EXISTS QUERYOSOS.BI_MigrarPedido
 DROP PROCEDURE IF EXISTS QUERYOSOS.BI_MigrarEnvio
+DROP PROCEDURE IF EXISTS QUERYOSOS.BI_MigrarCompra
 GO
 ------luego dropeamos las funciones si ya existen-----
 DROP FUNCTION IF EXISTS QUERYOSOS.CUATRIMESTRE
@@ -162,7 +163,7 @@ CREATE TABLE QUERYOSOS.BI_Compra (
 	idSucursal      INTEGER NOT NULL,
 	idUbicacion		INTEGER NOT NULL,
 	importePromedio DECIMAL(12,2),
-
+	nroCompra		DECIMAL(18,0)
 	PRIMARY KEY (idPedido, idTiempo, idMaterial, idSucursal, idUbicacion)
 );
 GO
@@ -482,7 +483,9 @@ BEGIN
 	SELECT idRangoEtario,bi_suc.idSucursal,tiempo.idTiempo,bi_ubi.idUbicacion,bi_modelo.idModelo,fac.nroFactura,item_fac.detalle_factura_subtotal  FROM  QUERYOSOS.Factura fac JOIN QUERYOSOS.Cliente c on fac.idCliente=c.idCliente
 	JOIN QUERYOSOS.BI_RangoEtario rango on DATEDIFF(year, c.fechaNacimiento, GETDATE()) between rango.desdeEdad and rango.hastaEdad
 	JOIN QUERYOSOS.Sucursal suc on fac.idSucursal=suc.idSucursal JOIN QUERYOSOS.Direccion dire on suc.idDireccion=dire.idDireccion
-	JOIN QUERYOSOS.BI_Sucursal bi_suc on dire.direccion=bi_suc.direccion JOIN QUERYOSOS.BI_Ubicacion bi_ubi on dire.direccion=bi_ubi.direccion
+	JOIN QUERYOSOS.BI_Sucursal bi_suc on dire.direccion=bi_suc.direccion JOIN QUERYOSOS.Localidad loca on dire.idLocalidad=loca.idLocalidad 
+	JOIN QUERYOSOS.Provincia provincia on provincia.idProvincia=loca.idProvincia JOIN QUERYOSOS.BI_Ubicacion bi_ubi on bi_ubi.direccion=dire.direccion
+	and bi_ubi.localidad=loca.nombre and bi_ubi.provincia=provincia.nombre
 	JOIN QUERYOSOS.BI_Tiempo tiempo on tiempo.mes=month(fac.fechaYHora) and  tiempo.anio=year(fac.fechaYHora) JOIN QUERYOSOS.ItemDetallefactura item_fac
 	on item_fac.nroFactura=fac.nroFactura JOIN QUERYOSOS.ItemDetallePedido item_ped on item_ped.id_item_pedido=item_fac.id_item_pedido JOIN QUERYOSOS.Modelo
 	modelo on modelo.sillon_modelo_codigo=item_ped.sillon_modelo_codigo JOIN QUERYOSOS.BI_Modelo bi_modelo on bi_modelo.descripcion=modelo.descripcion
@@ -497,12 +500,15 @@ BEGIN
 	INSERT INTO QUERYOSOS.BI_Pedido(idSucursal,idTiempo,idTurno,idUbicacion,idEstadoBI,nroPedido)
 	SELECT bi_sucu.idSucursal,bi_tiempo.idTiempo,bi_turno.idTurno,bi_ubi.idUbicacion,bi_estado.idEstadoBI,pedido.nroDePedido FROM QUERYOSOS.Pedido pedido join QUERYOSOS.Sucursal sucursal on pedido.idSucursal=sucursal.idSucursal
 	JOIN QUERYOSOS.Direccion dire on sucursal.idDireccion=dire.idDireccion JOIN QUERYOSOS.BI_Sucursal bi_sucu on bi_sucu.direccion=dire.direccion
-	JOIN QUERYOSOS.BI_Tiempo bi_tiempo on year(pedido.fechaYHora)=bi_tiempo.anio and month(pedido.fechaYHora)=bi_tiempo.mes JOIN QUERYOSOS.BI_Ubicacion bi_ubi on bi_ubi.direccion=dire.direccion
+	JOIN QUERYOSOS.BI_Tiempo bi_tiempo on year(pedido.fechaYHora)=bi_tiempo.anio and month(pedido.fechaYHora)=bi_tiempo.mes JOIN QUERYOSOS.Localidad loca on loca.idLocalidad=dire.idLocalidad
+	JOIN QUERYOSOS.Provincia provincia on provincia.idProvincia=loca.idProvincia JOIN QUERYOSOS.BI_Ubicacion bi_ubi on bi_ubi.localidad=loca.nombre and bi_ubi.provincia=provincia.nombre and bi_ubi.direccion=dire.direccion
 	JOIN QUERYOSOS.Estado estado_pedido on estado_pedido.idEstado=pedido.estadoActual JOIN QUERYOSOS.BI_EstadoPedido bi_estado ON estado_pedido.estado=bi_estado.estado
 	JOIN QUERYOSOS.BI_Turno bi_turno on CAST(pedido.fechaYHora AS TIME) BETWEEN bi_turno.desde and bi_turno.hasta
 END
 
 GO
+
+
 
 CREATE PROCEDURE QUERYOSOS.BI_MigrarEnvio as
 BEGIN
@@ -514,6 +520,21 @@ BEGIN
 END
 GO
 
+
+
+
+CREATE PROCEDURE QUERYOSOS.BI_MigrarCompra as
+BEGIN
+	INSERT INTO QUERYOSOS.BI_Compra(idSucursal,idTiempo,idUbicacion,idMaterial,nroCompra)
+	SELECT bi_sucu.idSucursal,bi_tiempo.idTiempo,bi_ubi.idUbicacion,bi_material.idMaterial,compra.nroDeCompra FROM QUERYOSOS.Compra compra JOIN QUERYOSOS.DetalleCompra det_compra on compra.nroDeCompra=det_compra.nroDeCompra
+	JOIN QUERYOSOS.Material material on det_compra.idMaterial=material.idMaterial JOIN QUERYOSOS.BI_Material bi_material on material.tipo=bi_material.tipo
+	JOIN QUERYOSOS.Sucursal sucu on compra.idSucursal=sucu.idSucursal
+	JOIN QUERYOSOS.Direccion dire on dire.idDireccion=sucu.idDireccion JOIN QUERYOSOS.BI_Sucursal bi_sucu on bi_sucu.direccion=dire.direccion
+	JOIN QUERYOSOS.Localidad loca on loca.idLocalidad=dire.idLocalidad JOIN QUERYOSOS.Provincia provincia on provincia.idProvincia=loca.idProvincia
+	JOIN QUERYOSOS.BI_Ubicacion bi_ubi on bi_ubi.localidad=loca.nombre and bi_ubi.provincia=provincia.nombre and bi_ubi.direccion=dire.direccion
+	JOIN QUERYOSOS.BI_Tiempo bi_tiempo on bi_tiempo.anio=year(compra.fechaCompra) and bi_tiempo.mes=month(compra.fechaCompra)
+END
+GO
 
 
 --CREATE PROCEDURE QUERYOSOS.BI_Migrar
@@ -541,7 +562,7 @@ EXEC QUERYOSOS.BI_MigrarModelos
 EXEC QUERYOSOS.BI_MigrarFacturacion
 EXEC QUERYOSOS.BI_MigrarPedido
 EXEC QUERYOSOS.BI_MigrarEnvio
-
+EXEC QUERYOSOS.BI_MigrarCompra
 
 
 
