@@ -23,6 +23,7 @@ GO
 
 ------luego dropeamos las vistas si ya existen-----
 DROP VIEW IF EXISTS QUERYOSOS.Ganancia_Total
+DROP VIEW IF EXISTS QUERYOSOS.Punto7_PromedioCompras
 DROP VIEW IF EXISTS QUERYOSOS.Punto8_ComprasPorTipoMaterial 
 DROP VIEW IF EXISTS QUERYOSOS.Punto9_PorcentajeCumplimientoEnvios
 DROP VIEW IF EXISTS QUERYOSOS.Punto10_LocalidadesMayorCostoEnvio
@@ -569,6 +570,14 @@ SELECT bi_tiempo.mes mes, bi_sucursal.idSucursal sucursal, (SELECT sum(isnull(su
 FROM QUERYOSOS.BI_Tiempo bi_tiempo CROSS JOIN QUERYOSOS.BI_Sucursal bi_sucursal
 GO
 
+--Punto 7: Promedio de compras
+GO
+CREATE VIEW QUERYOSOS.Punto7_PromedioCompras AS
+SELECT t.anio, t.mes, SUM(c.subtotal)/COUNT(DISTINCT c.nroCompra) as promedioCompras
+FROM QUERYOSOS.BI_Compra c JOIN QUERYOSOS.BI_Tiempo t on t.idTiempo = c.idTiempo
+GROUP BY t.anio, t.mes
+GO
+
 
 --Punto 8: Compras por tipo de material
 GO 
@@ -605,4 +614,3 @@ GO
 -------------------------------------
 --------------- TESTS ---------------
 -------------------------------------
-SELECT * FROM QUERYOSOS.Punto8_ComprasPorTipoMaterial
