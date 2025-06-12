@@ -23,6 +23,7 @@ GO
 
 ------luego dropeamos las vistas si ya existen-----
 DROP VIEW IF EXISTS QUERYOSOS.Ganancia_Total
+DROP VIEW IF EXISTS QUERYOSOS.Punto9_PorcentajeCumplimientoEnvios
 DROP VIEW IF EXISTS QUERYOSOS.Punto10_LocalidadesMayorCostoEnvio
 ------------------------------------------------------------------------------------------------
 ----- DROPEO DE TABLAS (respetar orden establecido) -----
@@ -569,6 +570,13 @@ GO
 
 
 --Punto 9: porcentaje de cumplimiento de envios
+GO
+CREATE VIEW QUERYOSOS.Punto9_PorcentajeCumplimientoEnvios AS
+SELECT t.anio as AñoEnvio, t.mes as MesEnvio, STR(COUNT(CASE WHEN e1.fechaHoraEntrega = e1.fechaProgramada THEN 1 END)*100/COUNT(*),5,0)+'%' as Porcentaje  
+FROM QUERYOSOS.BI_Envio e1 JOIN QUERYOSOS.BI_Tiempo t on t.anio = YEAR(e1.fechaHoraEntrega) AND t.mes = MONTH(e1.fechaHoraEntrega)
+GROUP BY t.anio, t.mes
+ORDER BY 1
+GO
 
 --Punto 10: localidades que pagan mayor costo de envio
 GO
@@ -589,4 +597,4 @@ GO
 -------------------------------------
 --------------- TESTS ---------------
 -------------------------------------
-SELECT * FROM QUERYOSOS.Punto10_LocalidadesMayorCostoEnvio
+SELECT * FROM QUERYOSOS.Punto9_PorcentajeCumplimientoEnvios
