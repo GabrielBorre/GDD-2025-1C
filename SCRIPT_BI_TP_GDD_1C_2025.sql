@@ -20,6 +20,11 @@ DROP FUNCTION IF EXISTS QUERYOSOS.CUATRIMESTRE
 DROP FUNCTION IF EXISTS QUERYOSOS.RANGO_EDAD
 DROP FUNCTION IF EXISTS QUERYOSOS.RANGO_EDAD_STRING
 GO
+------ dropeamos las views  si ya existen-----
+IF OBJECT_ID('QUERYOSOS.Punto10_LocalidadesMayorCostoEnvio','V') IS NOT NULL DROP VIEW QUERYOSOS.Punto10_LocalidadesMayorCostoEnvio;
+GO
+
+
 ------------------------------------------------------------------------------------------------
 ----- DROPEO DE TABLAS (respetar orden establecido) -----
 ------------------------------------------------------------------------------------------------
@@ -397,13 +402,7 @@ BEGIN
             WHEN DATEDIFF(year, fechaNacimiento, GETDATE()) BETWEEN 25 AND 35 THEN 35
             WHEN DATEDIFF(year, fechaNacimiento, GETDATE()) BETWEEN 35 AND 50 THEN 50
             WHEN DATEDIFF(year, fechaNacimiento, GETDATE()) > 50 THEN 500
-        END/*, esto no iria porque no tenemos una columna "descripcion"
-        CASE 
-            WHEN DATEDIFF(year, fechaNacimiento, GETDATE()) < 25 THEN 'Menor a 25'
-            WHEN DATEDIFF(year, fechaNacimiento, GETDATE()) BETWEEN 25 AND 35 THEN 'Entre 25 y 35'
-            WHEN DATEDIFF(year, fechaNacimiento, GETDATE()) BETWEEN 35 AND 50 THEN 'Entre 35 y 50'
-            WHEN DATEDIFF(year, fechaNacimiento, GETDATE()) > 50 THEN 'Mayor a 50'
-        END*/
+        END
 		FROM QUERYOSOS.Cliente
 END
 GO
@@ -435,7 +434,7 @@ BEGIN
 	JOIN QUERYOSOS.BI_Ubicacion AS u
 		on u.provincia = p.nombre
 		AND u.localidad = l.nombre
-		AND u.direccion = d.direccion; -- ac� estamos igualando el string, no el id de la direccion
+		AND u.direccion = d.direccion; 
 
 END
 GO
@@ -512,14 +511,13 @@ GO
 
 CREATE PROCEDURE QUERYOSOS.BI_MigrarEnvio as
 BEGIN
-	INSERT INTO QUERYOSOS.BI_Envio(idTiempo,idUbicacion,nroEnvio,fechaHoraEntrega,fechaProgramada)
-	SELECT bi_tiempo.idTiempo,bi_ubi.idUbicacion,env.nroDeEnvio,env.fechaYHoraEntrega,env.fechaProgramada FROM QUERYOSOS.Envio env JOIN QUERYOSOS.BI_Tiempo bi_tiempo on year(env.fechaProgramada)=bi_tiempo.anio and month(env.fechaProgramada)=bi_tiempo.mes
+	INSERT INTO QUERYOSOS.BI_Envio(idTiempo,idUbicacion,nroEnvio,fechaHoraEntrega,fechaProgramada, envioTotal)
+	SELECT bi_tiempo.idTiempo,bi_ubi.idUbicacion,env.nroDeEnvio,env.fechaYHoraEntrega,env.fechaProgramada, env.envioTotal FROM QUERYOSOS.Envio env JOIN QUERYOSOS.BI_Tiempo bi_tiempo on year(env.fechaProgramada)=bi_tiempo.anio and month(env.fechaProgramada)=bi_tiempo.mes
 	JOIN QUERYOSOS.Factura fact on env.nroDeFactura=fact.nroFactura JOIN QUERYOSOS.Cliente clie on fact.idCliente=clie.idCliente
 	JOIN QUERYOSOS.Direccion dire on clie.idDireccion=dire.idDireccion JOIN QUERYOSOS.Localidad loca on loca.idLocalidad=dire.idLocalidad JOIN
 	QUERYOSOS.Provincia prov on prov.idProvincia=loca.idProvincia JOIN QUERYOSOS.BI_Ubicacion bi_ubi on bi_ubi.direccion=dire.direccion and bi_ubi.localidad=loca.nombre and bi_ubi.provincia=prov.nombre
 END
 GO
-
 
 
 
@@ -537,10 +535,27 @@ END
 GO
 
 
---CREATE PROCEDURE QUERYOSOS.BI_Migrar
 -------------------------------------
 ------- CREACION DE VISTAS ----------
 -------------------------------------
+
+--Punto 10: localidades que pagan mayor costo de envio
+GO
+CREATE VIEW QUERYOSOS.Punto10_LocalidadesMayorCostoEnvio AS
+SELECT TOP 3
+     u.direccion AS localidad,
+     AVG(e.envioTotal) AS promedioEnvio
+FROM QUERYOSOS.BI_Facturacion  AS f
+JOIN QUERYOSOS.BI_Envio        AS e
+  ON f.idPedido    = e.idPedido
+JOIN QUERYOSOS.BI_Ubicacion    AS u
+  ON f.idUbicacion = u.idUbicacion
+GROUP BY
+     u.direccion
+ORDER BY
+     promedioEnvio DESC;
+GO
+
 
 -----------------------------------------
 -----------------------------------------
@@ -548,8 +563,6 @@ GO
 -------EFECTIVAS LAS MIGRACIONES (RESPETAR ORDEN)---------
 -----------------------------------------
 ------------------------------------
-
-
 
 EXEC QUERYOSOS.BI_MigrarTiempo
 EXEC QUERYOSOS.BI_MigrarRangoEtario
@@ -569,4 +582,4 @@ EXEC QUERYOSOS.BI_MigrarCompra
 -------------------------------------
 --------------- TESTS ---------------
 -------------------------------------
---SELECT * FROM QUERYOSOS.BI_Tiempo ORDER BY anio, mes;
+SELECT * FROM QUERYOSOS.Punto10_LocalidadesMayorCostoEnvio
