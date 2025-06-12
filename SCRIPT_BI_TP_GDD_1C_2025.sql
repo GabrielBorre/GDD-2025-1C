@@ -20,17 +20,10 @@ DROP FUNCTION IF EXISTS QUERYOSOS.CUATRIMESTRE
 DROP FUNCTION IF EXISTS QUERYOSOS.RANGO_EDAD
 DROP FUNCTION IF EXISTS QUERYOSOS.RANGO_EDAD_STRING
 GO
-<<<<<<< HEAD
------- dropeamos las views  si ya existen-----
-IF OBJECT_ID('QUERYOSOS.Punto10_LocalidadesMayorCostoEnvio','V') IS NOT NULL DROP VIEW QUERYOSOS.Punto10_LocalidadesMayorCostoEnvio;
-GO
-
-
-=======
 
 ------luego dropeamos las vistas si ya existen-----
 DROP VIEW IF EXISTS QUERYOSOS.Ganancia_Total
->>>>>>> ffe14cab90c890ad59940dcd47a2b8cf0a52cbc1
+DROP VIEW IF EXISTS QUERYOSOS.Punto10_LocalidadesMayorCostoEnvio
 ------------------------------------------------------------------------------------------------
 ----- DROPEO DE TABLAS (respetar orden establecido) -----
 ------------------------------------------------------------------------------------------------
@@ -161,7 +154,6 @@ CREATE TABLE QUERYOSOS.BI_Envio (
 	fechaProgramada	      DATETIME2,
 	fechaHoraEntrega      DATETIME2,
 	envioTotal			  DECIMAL(18,2),
-	localidadMayorEnvio   INTEGER,
 	nroEnvio			  DECIMAL(18,0)
 	PRIMARY KEY (idPedido, idTiempo, idUbicacion)
   );
@@ -569,11 +561,14 @@ GO
 ---VISTA 1 (GANANCIA TOTAL)
 
 --Punto 1
+GO
 CREATE VIEW QUERYOSOS.Ganancia_Total AS
 SELECT bi_tiempo.mes mes, bi_sucursal.idSucursal sucursal, (SELECT sum(isnull(subtotal_item_factura,0)) FROM QUERYOSOS.BI_Facturacion bi_fact JOIN QUERYOSOS.BI_Tiempo bi_tiem on bi_fact.idTiempo=bi_tiem.idTiempo where bi_tiem.mes=bi_tiempo.mes and bi_fact.idSucursal=bi_sucursal.idSucursal) - (SELECT sum(isnull(bi_compra.subtotal,0)) FROM QUERYOSOS.BI_Compra bi_compra JOIN QUERYOSOS.BI_Tiempo bi_ti on bi_compra.idTiempo=bi_ti.idTiempo where bi_tiempo.mes=bi_tiempo.mes and bi_compra.idSucursal=bi_sucursal.idSucursal) ganancia_total
 FROM QUERYOSOS.BI_Tiempo bi_tiempo CROSS JOIN QUERYOSOS.BI_Sucursal bi_sucursal
+GO
 
 
+--Punto 9: porcentaje de cumplimiento de envios
 
 --Punto 10: localidades que pagan mayor costo de envio
 GO
