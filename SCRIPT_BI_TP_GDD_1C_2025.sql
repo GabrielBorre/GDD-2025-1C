@@ -20,11 +20,17 @@ DROP FUNCTION IF EXISTS QUERYOSOS.CUATRIMESTRE
 DROP FUNCTION IF EXISTS QUERYOSOS.RANGO_EDAD
 DROP FUNCTION IF EXISTS QUERYOSOS.RANGO_EDAD_STRING
 GO
+<<<<<<< HEAD
 ------ dropeamos las views  si ya existen-----
 IF OBJECT_ID('QUERYOSOS.Punto10_LocalidadesMayorCostoEnvio','V') IS NOT NULL DROP VIEW QUERYOSOS.Punto10_LocalidadesMayorCostoEnvio;
 GO
 
 
+=======
+
+------luego dropeamos las vistas si ya existen-----
+DROP VIEW IF EXISTS QUERYOSOS.Ganancia_Total
+>>>>>>> ffe14cab90c890ad59940dcd47a2b8cf0a52cbc1
 ------------------------------------------------------------------------------------------------
 ----- DROPEO DE TABLAS (respetar orden establecido) -----
 ------------------------------------------------------------------------------------------------
@@ -168,7 +174,8 @@ CREATE TABLE QUERYOSOS.BI_Compra (
 	idSucursal      INTEGER NOT NULL,
 	idUbicacion		INTEGER NOT NULL,
 	importePromedio DECIMAL(12,2),
-	nroCompra		DECIMAL(18,0)
+	nroCompra		DECIMAL(18,0),
+	subtotal		DECIMAL(18,2)
 	PRIMARY KEY (idPedido, idTiempo, idMaterial, idSucursal, idUbicacion)
 );
 GO
@@ -523,8 +530,8 @@ GO
 
 CREATE PROCEDURE QUERYOSOS.BI_MigrarCompra as
 BEGIN
-	INSERT INTO QUERYOSOS.BI_Compra(idSucursal,idTiempo,idUbicacion,idMaterial,nroCompra)
-	SELECT bi_sucu.idSucursal,bi_tiempo.idTiempo,bi_ubi.idUbicacion,bi_material.idMaterial,compra.nroDeCompra FROM QUERYOSOS.Compra compra JOIN QUERYOSOS.DetalleCompra det_compra on compra.nroDeCompra=det_compra.nroDeCompra
+	INSERT INTO QUERYOSOS.BI_Compra(idSucursal,idTiempo,idUbicacion,idMaterial,nroCompra,subtotal)
+	SELECT bi_sucu.idSucursal,bi_tiempo.idTiempo,bi_ubi.idUbicacion,bi_material.idMaterial,compra.nroDeCompra,det_compra.subtotal FROM QUERYOSOS.Compra compra JOIN QUERYOSOS.DetalleCompra det_compra on compra.nroDeCompra=det_compra.nroDeCompra
 	JOIN QUERYOSOS.Material material on det_compra.idMaterial=material.idMaterial JOIN QUERYOSOS.BI_Material bi_material on material.tipo=bi_material.tipo
 	JOIN QUERYOSOS.Sucursal sucu on compra.idSucursal=sucu.idSucursal
 	JOIN QUERYOSOS.Direccion dire on dire.idDireccion=sucu.idDireccion JOIN QUERYOSOS.BI_Sucursal bi_sucu on bi_sucu.direccion=dire.direccion
@@ -533,30 +540,6 @@ BEGIN
 	JOIN QUERYOSOS.BI_Tiempo bi_tiempo on bi_tiempo.anio=year(compra.fechaCompra) and bi_tiempo.mes=month(compra.fechaCompra)
 END
 GO
-
-
--------------------------------------
-------- CREACION DE VISTAS ----------
--------------------------------------
-
---Punto 10: localidades que pagan mayor costo de envio
-GO
-CREATE VIEW QUERYOSOS.Punto10_LocalidadesMayorCostoEnvio AS
-SELECT TOP 3
-     u.direccion AS localidad,
-     AVG(e.envioTotal) AS promedioEnvio
-FROM QUERYOSOS.BI_Facturacion  AS f
-JOIN QUERYOSOS.BI_Envio        AS e
-  ON f.idPedido    = e.idPedido
-JOIN QUERYOSOS.BI_Ubicacion    AS u
-  ON f.idUbicacion = u.idUbicacion
-GROUP BY
-     u.direccion
-ORDER BY
-     promedioEnvio DESC;
-GO
-
-
 -----------------------------------------
 -----------------------------------------
 ------EJECUTAMOS LOS PROCEDURES PARA HACER
@@ -577,8 +560,37 @@ EXEC QUERYOSOS.BI_MigrarPedido
 EXEC QUERYOSOS.BI_MigrarEnvio
 EXEC QUERYOSOS.BI_MigrarCompra
 
+GO
+-------------------------------------
+------- CREACION DE VISTAS ----------
+-------------------------------------
+-----------------------------------
+
+---VISTA 1 (GANANCIA TOTAL)
+
+--Punto 1
+CREATE VIEW QUERYOSOS.Ganancia_Total AS
+SELECT bi_tiempo.mes mes, bi_sucursal.idSucursal sucursal, (SELECT sum(isnull(subtotal_item_factura,0)) FROM QUERYOSOS.BI_Facturacion bi_fact JOIN QUERYOSOS.BI_Tiempo bi_tiem on bi_fact.idTiempo=bi_tiem.idTiempo where bi_tiem.mes=bi_tiempo.mes and bi_fact.idSucursal=bi_sucursal.idSucursal) - (SELECT sum(isnull(bi_compra.subtotal,0)) FROM QUERYOSOS.BI_Compra bi_compra JOIN QUERYOSOS.BI_Tiempo bi_ti on bi_compra.idTiempo=bi_ti.idTiempo where bi_tiempo.mes=bi_tiempo.mes and bi_compra.idSucursal=bi_sucursal.idSucursal) ganancia_total
+FROM QUERYOSOS.BI_Tiempo bi_tiempo CROSS JOIN QUERYOSOS.BI_Sucursal bi_sucursal
 
 
+
+--Punto 10: localidades que pagan mayor costo de envio
+GO
+CREATE VIEW QUERYOSOS.Punto10_LocalidadesMayorCostoEnvio AS
+SELECT TOP 3
+     u.direccion AS localidad,
+     AVG(e.envioTotal) AS promedioEnvio
+FROM QUERYOSOS.BI_Facturacion  AS f
+JOIN QUERYOSOS.BI_Envio        AS e
+  ON f.idPedido    = e.idPedido
+JOIN QUERYOSOS.BI_Ubicacion    AS u
+  ON f.idUbicacion = u.idUbicacion
+GROUP BY
+     u.direccion
+ORDER BY
+     promedioEnvio DESC;
+GO
 -------------------------------------
 --------------- TESTS ---------------
 -------------------------------------
