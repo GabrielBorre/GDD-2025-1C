@@ -23,6 +23,10 @@ GO
 
 ------luego dropeamos las vistas si ya existen-----
 DROP VIEW IF EXISTS QUERYOSOS.Ganancia_Total
+DROP VIEW IF EXISTS QUERYOSOS.Factura_Promedio_Mensual
+DROP VIEW IF EXISTS QUERYOSOS.Modelos_Mas_Vendidos
+DROP VIEW IF EXISTS QUERYOSOS.Cantidad_Pedidos
+DROP VIEW IF EXISTS QUERYOSOS.Conversion_Pedidos
 DROP VIEW IF EXISTS QUERYOSOS.Punto6_TiempoPromedioFabricacion
 DROP VIEW IF EXISTS QUERYOSOS.Punto7_PromedioCompras
 DROP VIEW IF EXISTS QUERYOSOS.Punto8_ComprasPorTipoMaterial 
@@ -485,11 +489,13 @@ BEGIN
 	and bi_ubi.localidad=loca.nombre and bi_ubi.provincia=provincia.nombre
 	JOIN QUERYOSOS.BI_Tiempo tiempo on tiempo.mes=month(fac.fechaYHora) and  tiempo.anio=year(fac.fechaYHora) JOIN QUERYOSOS.ItemDetallefactura item_fac
 	on item_fac.nroFactura=fac.nroFactura JOIN QUERYOSOS.ItemDetallePedido item_ped on item_ped.id_item_pedido=item_fac.id_item_pedido JOIN QUERYOSOS.Modelo
-	modelo on modelo.sillon_modelo_codigo=item_ped.sillon_modelo_codigo JOIN QUERYOSOS.BI_Modelo bi_modelo on bi_modelo.descripcion=modelo.descripcion
+	modelo on modelo.sillon_modelo_codigo=item_ped.sillon_modelo_codigo  JOIN QUERYOSOS.BI_Modelo bi_modelo on bi_modelo.descripcion=modelo.descripcion
 	JOIN QUERYOSOS.Factura factura on factura.nroFactura = item_fac.nroFactura
 
 END
 go
+
+
 
 
 CREATE PROCEDURE QUERYOSOS.BI_MigrarPedido as
@@ -567,6 +573,67 @@ SELECT bi_tiempo.mes mes, bi_sucursal.idSucursal sucursal, (SELECT sum(isnull(su
 FROM QUERYOSOS.BI_Tiempo bi_tiempo CROSS JOIN QUERYOSOS.BI_Sucursal bi_sucursal
 GO
 
+
+---VISTA 2 (FACTURA PROMEDIO MENSUAL)
+GO 
+
+CREATE VIEW QUERYOSOS.Factura_Promedio_Mensual AS
+SELECT bi_ubi.provincia,bi_tiempo.cuatrimestre, sum(isnull(bi_fact.subtotal_item_factura,0))/COUNT(distinct bi_fact.nroFactura) facturacion_promedio
+FROM QUERYOSOS.BI_Facturacion bi_fact JOIN QUERYOSOS.BI_Ubicacion bi_ubi on bi_fact.idUbicacion=bi_ubi.idUbicacion JOIN QUERYOSOS.BI_Tiempo bi_tiempo on bi_fact.idTiempo=bi_tiempo.idTiempo
+GROUP BY bi_ubi.provincia,bi_tiempo.cuatrimestre
+
+GO
+
+
+---VISTA 3 (MODELOS MAS VENDIDOS)
+
+CREATE VIEW QUERYOSOS.Modelos_Mas_Vendidos AS
+SELECT bi_tiempo.anio,bi_tiempo.cuatrimestre,bi_ubi.localidad,bi_rango.desdeEdad, bi_rango.hastaEdad, bi_modelo.descripcion
+FROM QUERYOSOS.BI_Facturacion bi_fact JOIN QUERYOSOS.BI_Tiempo bi_tiempo on bi_tiempo.idTiempo=bi_fact.idTiempo
+JOIN QUERYOSOS.BI_Ubicacion bi_ubi on bi_ubi.idUbicacion=bi_fact.idUbicacion JOIN QUERYOSOS.BI_RangoEtario bi_rango on bi_rango.idRangoEtario=bi_fact.idRangoEtario
+JOIN QUERYOSOS.BI_Modelo bi_modelo on bi_modelo.idModelo=bi_fact.idModelo
+where bi_fact.idModelo in (SELECT TOP 3 fact.idModelo FROM QUERYOSOS.BI_Facturacion fact JOIN QUERYOSOS.BI_Ubicacion ubi on fact.idUbicacion=ubi.idUbicacion  where fact.idTiempo=bi_fact.idTiempo and ubi.localidad=bi_ubi.localidad
+and fact.idRangoEtario=bi_rango.idRangoEtario
+GROUP BY fact.idModelo,ubi.localidad,fact.idRangoEtario,fact.idTiempo
+ORDER BY COUNT(*)DESC)
+GROUP BY bi_tiempo.anio,bi_tiempo.cuatrimestre,bi_ubi.localidad,bi_rango.desdeEdad, bi_rango.hastaEdad, bi_modelo.descripcion
+
+GO
+---VISTA 4 (CANTIDAD PEDIDOS)
+
+CREATE VIEW QUERYOSOS.Cantidad_Pedidos as
+SELECT bi_tiempo.anio,bi_sucu.numeroSucursal,bi_turno.desde,bi_turno.hasta, count(distinct bi_pedido.nroPedido) cantidad_pedidos
+from QUERYOSOS.BI_Pedido bi_pedido JOIN QUERYOSOS.BI_Turno bi_turno on bi_pedido.idTurno=bi_turno.idTurno JOIN QUERYOSOS.BI_Sucursal bi_sucu on bi_sucu.idSucursal=bi_pedido.idSucursal
+JOIN QUERYOSOS.BI_Tiempo bi_tiempo on bi_tiempo.idTiempo=bi_pedido.idTiempo
+GROUP BY bi_tiempo.anio,bi_tiempo.anio,bi_sucu.numeroSucursal,bi_turno.desde,bi_turno.hasta
+
+
+GO
+---VISTA 5 (CONVERSION DE PEDIDOS)
+
+CREATE VIEW QUERYOSOS.Conversion_Pedidos AS
+SELECT 
+    bi_tiempo.cuatrimestre,
+    bi_sucu.numeroSucursal,
+    bi_estado.estado,
+    FORMAT(
+        COUNT(DISTINCT bi_pedido.nroPedido) * 1.0 /
+        (
+            SELECT COUNT(DISTINCT bi_ped.nroPedido)
+            FROM QUERYOSOS.BI_Pedido bi_ped
+            JOIN QUERYOSOS.BI_Tiempo bi_tiemp ON bi_ped.idTiempo = bi_tiemp.idTiempo
+            WHERE bi_tiemp.cuatrimestre = bi_tiempo.cuatrimestre
+              AND bi_ped.idSucursal = bi_sucu.idSucursal
+        ) * 100,
+        'N1'
+    ) + '%' AS porcentaje_pedidos
+FROM QUERYOSOS.BI_Pedido bi_pedido
+JOIN QUERYOSOS.BI_Tiempo bi_tiempo ON bi_pedido.idTiempo = bi_tiempo.idTiempo
+JOIN QUERYOSOS.BI_Sucursal bi_sucu ON bi_pedido.idSucursal = bi_sucu.idSucursal
+JOIN QUERYOSOS.BI_EstadoPedido bi_estado ON bi_pedido.idEstadoBI = bi_estado.idEstadoBI
+GROUP BY bi_tiempo.cuatrimestre, bi_sucu.numeroSucursal, bi_estado.estado, bi_sucu.idSucursal;
+
+
 --Punto 6:Tiempo promedio fabricacion
 GO
 CREATE VIEW QUERYOSOS.Punto6_TiempoPromedioFabricacion AS
@@ -587,7 +654,7 @@ GO
 --Punto 8: Compras por tipo de material
 GO 
 CREATE VIEW QUERYOSOS.Punto8_ComprasPorTipoMaterial AS
-SELECT t.anio as AÑO, t.cuatrimestre, '$'+LTRIM(STR(SUM(c.subtotal),18,0)) as gasto, m.tipo as tipoMaterial, c.idSucursal as sucursal FROM QUERYOSOS.BI_Compra c JOIN QUERYOSOS.BI_Material m on c.idMaterial = m.idMaterial
+SELECT t.anio as AniO, t.cuatrimestre, '$'+LTRIM(STR(SUM(c.subtotal),18,0)) as gasto, m.tipo as tipoMaterial, c.idSucursal as sucursal FROM QUERYOSOS.BI_Compra c JOIN QUERYOSOS.BI_Material m on c.idMaterial = m.idMaterial
 JOIN QUERYOSOS.BI_Tiempo t on t.idTiempo = c.idTiempo
 GROUP BY c.idSucursal, m.tipo, t.anio, t.cuatrimestre
 GO
@@ -595,7 +662,7 @@ GO
 --Punto 9: porcentaje de cumplimiento de envios
 GO
 CREATE VIEW QUERYOSOS.Punto9_PorcentajeCumplimientoEnvios AS
-SELECT t.anio as AñoEnvio, t.mes as MesEnvio, STR(COUNT(CASE WHEN e1.fechaHoraEntrega = e1.fechaProgramada THEN 1 END)*100/COUNT(*),5,0)+'%' as Porcentaje  
+SELECT t.anio as AnioEnvio, t.mes as MesEnvio, STR(COUNT(CASE WHEN e1.fechaHoraEntrega = e1.fechaProgramada THEN 1 END)*100/COUNT(*),5,0)+'%' as Porcentaje  
 FROM QUERYOSOS.BI_Envio e1 JOIN QUERYOSOS.BI_Tiempo t on t.anio = YEAR(e1.fechaHoraEntrega) AND t.mes = MONTH(e1.fechaHoraEntrega)
 GROUP BY t.anio, t.mes
 GO
@@ -619,4 +686,6 @@ GO
 -------------------------------------
 --------------- TESTS ---------------
 -------------------------------------
-SELECT * FROM QUERYOSOS.Punto6_TiempoPromedioFabricacion
+
+
+
