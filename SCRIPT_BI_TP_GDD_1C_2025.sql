@@ -37,13 +37,10 @@ DROP VIEW IF EXISTS QUERYOSOS.Punto10_LocalidadesMayorCostoEnvio
 ------------------------------------------------------------------------------------------------
 
 -- tablas de hechos 
-IF OBJECT_ID('QUERYOSOS.BI_Fabricacion','U')       IS NOT NULL DROP TABLE QUERYOSOS.BI_Fabricacion;
 IF OBJECT_ID('QUERYOSOS.BI_Envio','U')             IS NOT NULL DROP TABLE QUERYOSOS.BI_Envio;
 IF OBJECT_ID('QUERYOSOS.BI_Compra','U')            IS NOT NULL DROP TABLE QUERYOSOS.BI_Compra;
 IF OBJECT_ID('QUERYOSOS.BI_Pedido','U')            IS NOT NULL DROP TABLE QUERYOSOS.BI_Pedido;
 IF OBJECT_ID('QUERYOSOS.BI_Facturacion','U')       IS NOT NULL DROP TABLE QUERYOSOS.BI_Facturacion;
-IF OBJECT_ID('QUERYOSOS.BI_Ganancia','U')          IS NOT NULL DROP TABLE QUERYOSOS.BI_Ganancia;
-
 
 -- tablas otras
 IF OBJECT_ID('QUERYOSOS.BI_Sucursal','U')          IS NOT NULL DROP TABLE QUERYOSOS.BI_Sucursal;
@@ -133,7 +130,6 @@ CREATE TABLE QUERYOSOS.BI_Pedido(
 	estadoActual		INTEGER,
 	fechaCancelacion	DATETIME2,
 	motivoCancelacion	INTEGER,
-	cantidadPedidos		INTEGER,
 	nroPedido			DECIMAL(18,0)
 	
 	PRIMARY KEY (idPedido, idSucursal, idTiempo, idTurno, idUbicacion, idEstadoBI)
@@ -173,33 +169,9 @@ CREATE TABLE QUERYOSOS.BI_Compra (
 	idMaterial	    INTEGER NOT NULL,
 	idSucursal      INTEGER NOT NULL,
 	idUbicacion		INTEGER NOT NULL,
-	importePromedio DECIMAL(12,2),
 	nroCompra		DECIMAL(18,0),
 	subtotal		DECIMAL(18,2)
 	PRIMARY KEY (idPedido, idTiempo, idMaterial, idSucursal, idUbicacion)
-);
-GO
-
-CREATE TABLE QUERYOSOS.BI_Fabricacion (
-  idPedido       INTEGER IDENTITY(1,1),
-  idTiempo       INTEGER NOT NULL,
-  tiempoPromedio INTEGER,
-
-  PRIMARY KEY (idPedido, idTiempo)
-
-);
-GO
-
-CREATE TABLE QUERYOSOS.BI_Ganancia (
-  idGanancia        INTEGER IDENTITY(1,1),
-  idTiempo          INTEGER NOT NULL,
-  idSucursal	    INTEGER NOT NULL,
-  idUbicacion	    INTEGER NOT NULL,
-  totalIngresos     DECIMAL(12,2),
-  totalEgresos      DECIMAL(12,2),
-  gananciaTotal     DECIMAL(12,2),
-
-   PRIMARY KEY (idGanancia, idTiempo, idSucursal, idUbicacion)
 );
 GO
 
@@ -297,25 +269,6 @@ FOREIGN KEY (idSucursal) REFERENCES QUERYOSOS.BI_Sucursal(idSucursal);
 
 ALTER TABLE QUERYOSOS.BI_Compra -- agrego FK a ubicacion
 ADD CONSTRAINT FK_Compra_Ubicacion
-FOREIGN KEY (idUbicacion) REFERENCES QUERYOSOS.BI_Ubicacion(idUbicacion);
-
-
--- BI_Fabricacion
-ALTER TABLE QUERYOSOS.BI_Fabricacion
-ADD CONSTRAINT FK_Fab_Tiempo          
-FOREIGN KEY (idTiempo) REFERENCES QUERYOSOS.BI_Tiempo(idTiempo);
-
--- BI_Ganancia
-ALTER TABLE QUERYOSOS.BI_Ganancia
-ADD CONSTRAINT FK_Gan_Tiempo          
-FOREIGN KEY (idTiempo) REFERENCES QUERYOSOS.BI_Tiempo(idTiempo);
-
-ALTER TABLE QUERYOSOS.BI_Ganancia
-ADD CONSTRAINT FK_Gan_Sucursal        
-FOREIGN KEY (idSucursal) REFERENCES QUERYOSOS.BI_Sucursal(idSucursal);
-
-ALTER TABLE QUERYOSOS.BI_Ganancia
-ADD CONSTRAINT FK_Gan_Ubicacion        
 FOREIGN KEY (idUbicacion) REFERENCES QUERYOSOS.BI_Ubicacion(idUbicacion);
 
 GO
