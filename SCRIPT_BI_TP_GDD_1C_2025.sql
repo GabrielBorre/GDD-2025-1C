@@ -185,15 +185,15 @@ SET desdeEdad =   0, hastaEdad =  24
 WHERE idRangoEtario = 1;
 
 UPDATE QUERYOSOS.BI_RangoEtario
-SET desdeEdad =  25, hastaEdad =  35
+SET desdeEdad =  25, hastaEdad =  34
 WHERE idRangoEtario = 2;
 
 UPDATE QUERYOSOS.BI_RangoEtario
-SET desdeEdad =  36, hastaEdad =  50
+SET desdeEdad =  35, hastaEdad =  49
 WHERE idRangoEtario = 3;
 
 UPDATE QUERYOSOS.BI_RangoEtario
-SET desdeEdad =  51, hastaEdad = 500
+SET desdeEdad =  50, hastaEdad = 500
 WHERE idRangoEtario = 4;
 GO
 
@@ -354,14 +354,14 @@ BEGIN
     SELECT DISTINCT
         CASE 
             WHEN DATEDIFF(year, fechaNacimiento, GETDATE()) <= 24 THEN 0
-            WHEN DATEDIFF(year, fechaNacimiento, GETDATE()) BETWEEN 25 AND 35 THEN 25
-            WHEN DATEDIFF(year, fechaNacimiento, GETDATE()) BETWEEN 35 AND 50 THEN 35
+            WHEN DATEDIFF(year, fechaNacimiento, GETDATE()) BETWEEN 25 AND 34 THEN 25
+            WHEN DATEDIFF(year, fechaNacimiento, GETDATE()) BETWEEN 35 AND 49 THEN 35
             WHEN DATEDIFF(year, fechaNacimiento, GETDATE()) >= 50 THEN 50
         END,
         CASE 
             WHEN DATEDIFF(year, fechaNacimiento, GETDATE()) <= 24 THEN 24
-            WHEN DATEDIFF(year, fechaNacimiento, GETDATE()) BETWEEN 25 AND 35 THEN 34
-            WHEN DATEDIFF(year, fechaNacimiento, GETDATE()) BETWEEN 35 AND 50 THEN 49
+            WHEN DATEDIFF(year, fechaNacimiento, GETDATE()) BETWEEN 25 AND 34 THEN 34
+            WHEN DATEDIFF(year, fechaNacimiento, GETDATE()) BETWEEN 35 AND 49 THEN 49
             WHEN DATEDIFF(year, fechaNacimiento, GETDATE()) >= 50 THEN 500
         END
 		FROM QUERYOSOS.Cliente
