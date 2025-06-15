@@ -19,6 +19,7 @@ GO
 DROP FUNCTION IF EXISTS QUERYOSOS.CUATRIMESTRE
 DROP FUNCTION IF EXISTS QUERYOSOS.RANGO_EDAD
 DROP FUNCTION IF EXISTS QUERYOSOS.RANGO_EDAD_STRING
+
 GO
 
 ------luego dropeamos las vistas si ya existen-----
@@ -294,7 +295,7 @@ BEGIN
     RETURN @Cuatrimestre;
 END
 GO
-
+select * from QUERYOSOS.BI_RangoEtario
 GO
 CREATE FUNCTION QUERYOSOS.RANGO_EDAD(@Edad INT)
 RETURNS INT
@@ -352,16 +353,16 @@ BEGIN
 	INSERT INTO QUERYOSOS.BI_RangoEtario(desdeEdad, hastaEdad)
     SELECT DISTINCT
         CASE 
-            WHEN DATEDIFF(year, fechaNacimiento, GETDATE()) < 25 THEN 0
+            WHEN DATEDIFF(year, fechaNacimiento, GETDATE()) <= 24 THEN 0
             WHEN DATEDIFF(year, fechaNacimiento, GETDATE()) BETWEEN 25 AND 35 THEN 25
             WHEN DATEDIFF(year, fechaNacimiento, GETDATE()) BETWEEN 35 AND 50 THEN 35
-            WHEN DATEDIFF(year, fechaNacimiento, GETDATE()) > 50 THEN 50
+            WHEN DATEDIFF(year, fechaNacimiento, GETDATE()) >= 50 THEN 50
         END,
         CASE 
-            WHEN DATEDIFF(year, fechaNacimiento, GETDATE()) < 25 THEN 25
-            WHEN DATEDIFF(year, fechaNacimiento, GETDATE()) BETWEEN 25 AND 35 THEN 35
-            WHEN DATEDIFF(year, fechaNacimiento, GETDATE()) BETWEEN 35 AND 50 THEN 50
-            WHEN DATEDIFF(year, fechaNacimiento, GETDATE()) > 50 THEN 500
+            WHEN DATEDIFF(year, fechaNacimiento, GETDATE()) <= 24 THEN 24
+            WHEN DATEDIFF(year, fechaNacimiento, GETDATE()) BETWEEN 25 AND 35 THEN 34
+            WHEN DATEDIFF(year, fechaNacimiento, GETDATE()) BETWEEN 35 AND 50 THEN 49
+            WHEN DATEDIFF(year, fechaNacimiento, GETDATE()) >= 50 THEN 500
         END
 		FROM QUERYOSOS.Cliente
 END
@@ -434,22 +435,30 @@ go
 CREATE PROCEDURE QUERYOSOS.BI_MigrarFacturacion as
 BEGIN
 	INSERT INTO QUERYOSOS.BI_Facturacion(idRangoEtario,idSucursal,idTiempo,idUbicacion,idModelo,nroFactura,subtotal_item_factura, fechaYHora)
-	SELECT idRangoEtario,bi_suc.idSucursal,tiempo.idTiempo,bi_ubi.idUbicacion,bi_modelo.idModelo,fac.nroFactura,item_fac.detalle_factura_subtotal, factura.fechaYHora  FROM  QUERYOSOS.Factura fac JOIN QUERYOSOS.Cliente c on fac.idCliente=c.idCliente
-	JOIN QUERYOSOS.BI_RangoEtario rango on DATEDIFF(year, c.fechaNacimiento, GETDATE()) between rango.desdeEdad and rango.hastaEdad
-	JOIN QUERYOSOS.Sucursal suc on fac.idSucursal=suc.idSucursal JOIN QUERYOSOS.Direccion dire on suc.idDireccion=dire.idDireccion
-	JOIN QUERYOSOS.BI_Sucursal bi_suc on dire.direccion=bi_suc.direccion JOIN QUERYOSOS.Localidad loca on dire.idLocalidad=loca.idLocalidad 
-	JOIN QUERYOSOS.Provincia provincia on provincia.idProvincia=loca.idProvincia JOIN QUERYOSOS.BI_Ubicacion bi_ubi on bi_ubi.direccion=dire.direccion
-	and bi_ubi.localidad=loca.nombre and bi_ubi.provincia=provincia.nombre
-	JOIN QUERYOSOS.BI_Tiempo tiempo on tiempo.mes=month(fac.fechaYHora) and  tiempo.anio=year(fac.fechaYHora) JOIN QUERYOSOS.ItemDetallefactura item_fac
-	on item_fac.nroFactura=fac.nroFactura JOIN QUERYOSOS.ItemDetallePedido item_ped on item_ped.id_item_pedido=item_fac.id_item_pedido JOIN QUERYOSOS.Modelo
-	modelo on modelo.sillon_modelo_codigo=item_ped.sillon_modelo_codigo  JOIN QUERYOSOS.BI_Modelo bi_modelo on bi_modelo.descripcion=modelo.descripcion
-	JOIN QUERYOSOS.Factura factura on factura.nroFactura = item_fac.nroFactura
-
+		SELECT  idRangoEtario, 
+				bi_suc.idSucursal, 
+				tiempo.idTiempo, 
+				bi_ubi.idUbicacion, 
+				bi_modelo.idModelo, 
+				fac.nroFactura, 
+				item_fac.detalle_factura_subtotal, 
+				fac.fechaYHora  
+		from QUERYOSOS.ItemDetallefactura item_fac 
+			join QUERYOSOS.ItemDetallePedido item_ped	on item_fac.id_item_pedido = item_ped.id_item_pedido 
+			join QUERYOSOS.Factura fac					on item_fac.nroFactura = fac.nroFactura
+			JOIN QUERYOSOS.Cliente c					on fac.idCliente = c.idCliente
+			JOIN QUERYOSOS.BI_RangoEtario rango			on DATEDIFF(year, c.fechaNacimiento, GETDATE()) between rango.desdeEdad and rango.hastaEdad
+			JOIN QUERYOSOS.Sucursal suc					on fac.idSucursal = suc.idSucursal 
+			JOIN QUERYOSOS.Direccion dire				on suc.idDireccion = dire.idDireccion
+			JOIN QUERYOSOS.BI_Sucursal bi_suc			on dire.direccion = bi_suc.direccion 
+			JOIN QUERYOSOS.Localidad loca				on dire.idLocalidad = loca.idLocalidad 
+			JOIN QUERYOSOS.Provincia provincia			on provincia.idProvincia = loca.idProvincia 
+			JOIN QUERYOSOS.BI_Ubicacion bi_ubi			on bi_ubi.direccion = dire.direccion and bi_ubi.localidad = loca.nombre and bi_ubi.provincia = provincia.nombre
+			JOIN QUERYOSOS.BI_Tiempo tiempo				on tiempo.mes = month(fac.fechaYHora) and  tiempo.anio = year(fac.fechaYHora) 
+			JOIN QUERYOSOS.Modelo modelo				on modelo.sillon_modelo_codigo = item_ped.sillon_modelo_codigo  
+			JOIN QUERYOSOS.BI_Modelo bi_modelo			on bi_modelo.descripcion = modelo.descripcion
 END
 go
-
-
-
 
 CREATE PROCEDURE QUERYOSOS.BI_MigrarPedido as
 BEGIN
