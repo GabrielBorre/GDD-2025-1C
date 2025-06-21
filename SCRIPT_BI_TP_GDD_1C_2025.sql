@@ -1,6 +1,35 @@
 USE GD1C2025;
 GO
 
+
+
+------------------------------------------------------------------------------------------------
+----- DROPEO DE TABLAS (respetar orden establecido) -----
+-----------------------------------------------------------------------------------------------
+-- tablas de hechos 
+IF OBJECT_ID('QUERYOSOS.BI_Envio','U')             IS NOT NULL DROP TABLE QUERYOSOS.BI_Envio;
+IF OBJECT_ID('QUERYOSOS.BI_Compra','U')            IS NOT NULL DROP TABLE QUERYOSOS.BI_Compra;
+IF OBJECT_ID('QUERYOSOS.BI_Pedido','U')            IS NOT NULL DROP TABLE QUERYOSOS.BI_Pedido;
+IF OBJECT_ID('QUERYOSOS.BI_Facturacion','U')       IS NOT NULL DROP TABLE QUERYOSOS.BI_Facturacion;
+
+
+
+-- tablas otras
+IF OBJECT_ID('QUERYOSOS.BI_Sucursal','U')          IS NOT NULL DROP TABLE QUERYOSOS.BI_Sucursal;
+IF OBJECT_ID('QUERYOSOS.BI_Modelo','U')           IS NOT NULL DROP TABLE QUERYOSOS.BI_Modelo;
+IF OBJECT_ID('QUERYOSOS.BI_Turno','U')             IS NOT NULL DROP TABLE QUERYOSOS.BI_Turno;
+IF OBJECT_ID('QUERYOSOS.BI_Material','U')          IS NOT NULL DROP TABLE QUERYOSOS.BI_Material;
+IF OBJECT_ID('QUERYOSOS.BI_RangoEtario','U')       IS NOT NULL DROP TABLE QUERYOSOS.BI_RangoEtario;
+IF OBJECT_ID('QUERYOSOS.BI_EstadoPedido','U')      IS NOT NULL DROP TABLE QUERYOSOS.BI_EstadoPedido;
+IF OBJECT_ID('QUERYOSOS.BI_Ubicacion','U')         IS NOT NULL DROP TABLE QUERYOSOS.BI_Ubicacion;
+IF OBJECT_ID('QUERYOSOS.BI_Tiempo','U')            IS NOT NULL DROP TABLE QUERYOSOS.BI_Tiempo;
+
+
+
+
+
+
+GO
 ------Primero dropeamos los procedures si ya existen-----
 DROP PROCEDURE IF EXISTS QUERYOSOS.BI_MigrarTiempo
 DROP PROCEDURE IF EXISTS QUERYOSOS.BI_MigrarRangoEtario
@@ -33,25 +62,10 @@ DROP VIEW IF EXISTS QUERYOSOS.Punto7_PromedioCompras
 DROP VIEW IF EXISTS QUERYOSOS.Punto8_ComprasPorTipoMaterial 
 DROP VIEW IF EXISTS QUERYOSOS.Punto9_PorcentajeCumplimientoEnvios
 DROP VIEW IF EXISTS QUERYOSOS.Punto10_LocalidadesMayorCostoEnvio
-------------------------------------------------------------------------------------------------
------ DROPEO DE TABLAS (respetar orden establecido) -----
-------------------------------------------------------------------------------------------------
 
--- tablas de hechos 
-IF OBJECT_ID('QUERYOSOS.BI_Envio','U')             IS NOT NULL DROP TABLE QUERYOSOS.BI_Envio;
-IF OBJECT_ID('QUERYOSOS.BI_Compra','U')            IS NOT NULL DROP TABLE QUERYOSOS.BI_Compra;
-IF OBJECT_ID('QUERYOSOS.BI_Pedido','U')            IS NOT NULL DROP TABLE QUERYOSOS.BI_Pedido;
-IF OBJECT_ID('QUERYOSOS.BI_Facturacion','U')       IS NOT NULL DROP TABLE QUERYOSOS.BI_Facturacion;
 
--- tablas otras
-IF OBJECT_ID('QUERYOSOS.BI_Sucursal','U')          IS NOT NULL DROP TABLE QUERYOSOS.BI_Sucursal;
-IF OBJECT_ID('QUERYOSOS.BI_Modelo','U')           IS NOT NULL DROP TABLE QUERYOSOS.BI_Modelo;
-IF OBJECT_ID('QUERYOSOS.BI_Turno','U')             IS NOT NULL DROP TABLE QUERYOSOS.BI_Turno;
-IF OBJECT_ID('QUERYOSOS.BI_Material','U')          IS NOT NULL DROP TABLE QUERYOSOS.BI_Material;
-IF OBJECT_ID('QUERYOSOS.BI_RangoEtario','U')       IS NOT NULL DROP TABLE QUERYOSOS.BI_RangoEtario;
-IF OBJECT_ID('QUERYOSOS.BI_EstadoPedido','U')      IS NOT NULL DROP TABLE QUERYOSOS.BI_EstadoPedido;
-IF OBJECT_ID('QUERYOSOS.BI_Ubicacion','U')         IS NOT NULL DROP TABLE QUERYOSOS.BI_Ubicacion;
-IF OBJECT_ID('QUERYOSOS.BI_Tiempo','U')            IS NOT NULL DROP TABLE QUERYOSOS.BI_Tiempo;
+
+
 GO
 
 
@@ -295,7 +309,7 @@ BEGIN
     RETURN @Cuatrimestre;
 END
 GO
-select * from QUERYOSOS.BI_RangoEtario
+
 GO
 CREATE FUNCTION QUERYOSOS.RANGO_EDAD(@Edad INT)
 RETURNS INT
@@ -459,6 +473,8 @@ BEGIN
 			JOIN QUERYOSOS.BI_Modelo bi_modelo			on bi_modelo.descripcion = modelo.descripcion
 END
 go
+
+
 
 CREATE PROCEDURE QUERYOSOS.BI_MigrarPedido as
 BEGIN
