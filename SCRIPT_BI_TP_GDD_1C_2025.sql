@@ -2,7 +2,6 @@ USE GD1C2025;
 GO
 
 
-
 ------------------------------------------------------------------------------------------------
 ----- DROPEO DE TABLAS (respetar orden establecido) -----
 -----------------------------------------------------------------------------------------------
@@ -152,7 +151,7 @@ CREATE TABLE QUERYOSOS.BI_Pedido(
 GO
 
 CREATE TABLE QUERYOSOS.BI_Facturacion(
-	idPedido		 BIGINT IDENTITY(1,1),
+	idFacturacion		 BIGINT IDENTITY(1,1),
 	idRangoEtario    INTEGER NOT NULL,
 	idSucursal       INTEGER NOT NULL,
 	idTiempo         INTEGER NOT NULL,
@@ -161,32 +160,33 @@ CREATE TABLE QUERYOSOS.BI_Facturacion(
 	fechaYHora       DATETIME2,
 	nroFactura		 BIGINT,
 	subtotal_item_factura  DECIMAL(18,2),
-
-	PRIMARY KEY (idPedido, idRangoEtario, idSucursal, idTiempo, idModelo, idUbicacion)
+	nroPedido			   DECIMAL(18,0)
+	PRIMARY KEY (idFacturacion, idRangoEtario, idSucursal, idTiempo, idModelo, idUbicacion)
 );
 GO
 
 CREATE TABLE QUERYOSOS.BI_Envio (
-	idPedido              BIGINT IDENTITY(1,1),
+	idEnvio              BIGINT IDENTITY(1,1),
 	idTiempo			  INTEGER NOT NULL,
 	idUbicacion			  INTEGER NOT NULL,
 	fechaProgramada	      DATETIME2,
 	fechaHoraEntrega      DATETIME2,
 	envioTotal			  DECIMAL(18,2),
-	nroEnvio			  DECIMAL(18,0)
-	PRIMARY KEY (idPedido, idTiempo, idUbicacion)
+	nroEnvio			  DECIMAL(18,0),
+	nroFactura			  DECIMAL(18,0)
+	PRIMARY KEY (idEnvio, idTiempo, idUbicacion)
   );
 GO
 
 CREATE TABLE QUERYOSOS.BI_Compra (
-	idPedido        INTEGER IDENTITY(1,1),
+	idCompra        INTEGER IDENTITY(1,1),
 	idTiempo        INTEGER NOT NULL,
 	idMaterial	    INTEGER NOT NULL,
 	idSucursal      INTEGER NOT NULL,
 	idUbicacion		INTEGER NOT NULL,
 	nroCompra		DECIMAL(18,0),
 	subtotal		DECIMAL(18,2)
-	PRIMARY KEY (idPedido, idTiempo, idMaterial, idSucursal, idUbicacion)
+	PRIMARY KEY (idCompra, idTiempo, idMaterial, idSucursal, idUbicacion)
 );
 GO
 
@@ -446,9 +446,10 @@ END
 go
 
 
+
 CREATE PROCEDURE QUERYOSOS.BI_MigrarFacturacion as
 BEGIN
-	INSERT INTO QUERYOSOS.BI_Facturacion(idRangoEtario,idSucursal,idTiempo,idUbicacion,idModelo,nroFactura,subtotal_item_factura, fechaYHora)
+	INSERT INTO QUERYOSOS.BI_Facturacion(idRangoEtario,idSucursal,idTiempo,idUbicacion,idModelo,nroFactura,subtotal_item_factura, fechaYHora,nroPedido)
 		SELECT  idRangoEtario, 
 				bi_suc.idSucursal, 
 				tiempo.idTiempo, 
@@ -456,7 +457,8 @@ BEGIN
 				bi_modelo.idModelo, 
 				fac.nroFactura, 
 				item_fac.detalle_factura_subtotal, 
-				fac.fechaYHora  
+				fac.fechaYHora  ,
+				item_ped.nroDePedido
 		from QUERYOSOS.ItemDetallefactura item_fac 
 			join QUERYOSOS.ItemDetallePedido item_ped	on item_fac.id_item_pedido = item_ped.id_item_pedido 
 			join QUERYOSOS.Factura fac					on item_fac.nroFactura = fac.nroFactura
@@ -494,8 +496,8 @@ GO
 
 CREATE PROCEDURE QUERYOSOS.BI_MigrarEnvio as
 BEGIN
-	INSERT INTO QUERYOSOS.BI_Envio(idTiempo,idUbicacion,nroEnvio,fechaHoraEntrega,fechaProgramada, envioTotal)
-	SELECT bi_tiempo.idTiempo,bi_ubi.idUbicacion,env.nroDeEnvio,env.fechaYHoraEntrega,env.fechaProgramada, env.envioTotal FROM QUERYOSOS.Envio env JOIN QUERYOSOS.BI_Tiempo bi_tiempo on year(env.fechaProgramada)=bi_tiempo.anio and month(env.fechaProgramada)=bi_tiempo.mes
+	INSERT INTO QUERYOSOS.BI_Envio(idTiempo,idUbicacion,nroEnvio,fechaHoraEntrega,fechaProgramada, envioTotal,nroFactura)
+	SELECT bi_tiempo.idTiempo,bi_ubi.idUbicacion,env.nroDeEnvio,env.fechaYHoraEntrega,env.fechaProgramada, env.envioTotal,fact.nroFactura FROM QUERYOSOS.Envio env JOIN QUERYOSOS.BI_Tiempo bi_tiempo on year(env.fechaProgramada)=bi_tiempo.anio and month(env.fechaProgramada)=bi_tiempo.mes
 	JOIN QUERYOSOS.Factura fact on env.nroDeFactura=fact.nroFactura JOIN QUERYOSOS.Cliente clie on fact.idCliente=clie.idCliente
 	JOIN QUERYOSOS.Direccion dire on clie.idDireccion=dire.idDireccion JOIN QUERYOSOS.Localidad loca on loca.idLocalidad=dire.idLocalidad JOIN
 	QUERYOSOS.Provincia prov on prov.idProvincia=loca.idProvincia JOIN QUERYOSOS.BI_Ubicacion bi_ubi on bi_ubi.direccion=dire.direccion and bi_ubi.localidad=loca.nombre and bi_ubi.provincia=prov.nombre
@@ -615,9 +617,9 @@ GROUP BY bi_tiempo.cuatrimestre, bi_sucu.numeroSucursal, bi_estado.estado, bi_su
 --Punto 6:Tiempo promedio fabricacion
 GO
 CREATE VIEW QUERYOSOS.Punto6_TiempoPromedioFabricacion AS
-SELECT p.idSucursal, t.cuatrimestre, AVG(ABS(DATEDIFF(MINUTE,p.fechaYhora,f.fechaYHora))) as promedioTiempo  FROM QUERYOSOS.BI_Pedido p JOIN QUERYOSOS.BI_Facturacion f on f.idPedido = p.idPedido 
+SELECT p.idSucursal, t.cuatrimestre, AVG(ABS(DATEDIFF(MINUTE,p.fechaYhora,f.fechaYHora))) as promedioTiempo  FROM QUERYOSOS.BI_Pedido p JOIN QUERYOSOS.BI_Facturacion f on f.nroPedido = p.nroPedido 
 JOIN QUERYOSOS.BI_Tiempo t on t.idTiempo = p.idTiempo
-GROUP BY p.idSucursal, t.cuatrimestre
+GROUP BY p.idSucursal, t.cuatrimestre,f.nroPedido
 GO
 
 --Punto 7: Promedio de compras
@@ -632,9 +634,9 @@ GO
 --Punto 8: Compras por tipo de material
 GO 
 CREATE VIEW QUERYOSOS.Punto8_ComprasPorTipoMaterial AS
-SELECT t.anio as AniO, t.cuatrimestre, '$'+LTRIM(STR(SUM(c.subtotal),18,0)) as gasto, m.tipo as tipoMaterial, c.idSucursal as sucursal FROM QUERYOSOS.BI_Compra c JOIN QUERYOSOS.BI_Material m on c.idMaterial = m.idMaterial
-JOIN QUERYOSOS.BI_Tiempo t on t.idTiempo = c.idTiempo
-GROUP BY c.idSucursal, m.tipo, t.anio, t.cuatrimestre
+SELECT t.anio as AniO, t.cuatrimestre, '$'+LTRIM(STR(SUM(c.subtotal),18,0)) as gasto, m.tipo as tipoMaterial, s.numeroSucursal as sucursal FROM QUERYOSOS.BI_Compra c JOIN QUERYOSOS.BI_Material m on c.idMaterial = m.idMaterial
+JOIN QUERYOSOS.BI_Tiempo t on t.idTiempo = c.idTiempo JOIN QUERYOSOS.BI_Sucursal s on s.idSucursal=c.idSucursal
+GROUP BY c.idSucursal, m.tipo, t.anio, t.cuatrimestre,s.numeroSucursal
 GO
 
 --Punto 9: porcentaje de cumplimiento de envios
@@ -645,19 +647,21 @@ FROM QUERYOSOS.BI_Envio e1 JOIN QUERYOSOS.BI_Tiempo t on t.anio = YEAR(e1.fechaH
 GROUP BY t.anio, t.mes
 GO
 
+
+
 --Punto 10: localidades que pagan mayor costo de envio
 GO
 CREATE VIEW QUERYOSOS.Punto10_LocalidadesMayorCostoEnvio AS
 SELECT TOP 3
-     u.direccion AS localidad,
+     u.localidad AS localidad,
      AVG(e.envioTotal) AS promedioEnvio
 FROM QUERYOSOS.BI_Facturacion  AS f
 JOIN QUERYOSOS.BI_Envio        AS e
-  ON f.idPedido    = e.idPedido
+  ON f.nroFactura    = e.nroFactura
 JOIN QUERYOSOS.BI_Ubicacion    AS u
   ON f.idUbicacion = u.idUbicacion
 GROUP BY
-     u.direccion
+     u.localidad
 ORDER BY
      promedioEnvio DESC;
 GO
