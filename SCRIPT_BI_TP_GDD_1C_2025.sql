@@ -488,7 +488,7 @@ GO
 CREATE PROCEDURE QUERYOSOS.BI_MigrarEnvio as
 BEGIN
 	INSERT INTO QUERYOSOS.BI_Envio(idTiempo,idUbicacion,costo_total_envio,cantidad_envios,envios_cumplidos)
-	SELECT bi_tiempo.idTiempo,bi_ubi.idUbicacion,sum(isnull(env.envioTotal,0)),COUNT(DISTINCT env.nroDeEnvio),COUNT(DISTINCT envios_cumplidos.nroDeEnvio)envios_cumplidos FROM QUERYOSOS.Envio env JOIN QUERYOSOS.BI_Tiempo bi_tiempo on year(env.fechaProgramada)=bi_tiempo.anio and month(env.fechaProgramada)=bi_tiempo.mes
+	SELECT bi_tiempo.idTiempo,bi_ubi.idUbicacion,sum(isnull(env.envioTotal,0)),COUNT(DISTINCT env.nroDeEnvio),SUM(CASE WHEN envios_cumplidos.nroDeEnvio IS NOT NULL THEN 1 ELSE 0 END)envios_cumplidos FROM QUERYOSOS.Envio env JOIN QUERYOSOS.BI_Tiempo bi_tiempo on year(env.fechaProgramada)=bi_tiempo.anio and month(env.fechaProgramada)=bi_tiempo.mes
 	JOIN QUERYOSOS.Factura fact on env.nroDeFactura=fact.nroFactura JOIN QUERYOSOS.Cliente clie on fact.idCliente=clie.idCliente
 	JOIN QUERYOSOS.Direccion dire on clie.idDireccion=dire.idDireccion JOIN QUERYOSOS.Localidad loca on loca.idLocalidad=dire.idLocalidad JOIN
 	QUERYOSOS.Provincia prov on prov.idProvincia=loca.idProvincia JOIN QUERYOSOS.BI_Ubicacion bi_ubi on bi_ubi.direccion=dire.direccion and bi_ubi.localidad=loca.nombre and bi_ubi.provincia=prov.nombre
