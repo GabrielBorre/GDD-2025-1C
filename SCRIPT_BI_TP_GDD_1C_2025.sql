@@ -112,7 +112,6 @@ GO
 
 CREATE TABLE QUERYOSOS.BI_Modelo (
    idModelo	  BIGINT IDENTITY(1,1)  PRIMARY KEY,
-   cantidadVentas DECIMAL(18,0),
    descripcion	  NVARCHAR(255)
 );
 GO
@@ -498,7 +497,6 @@ END
 GO
 
 
-
 CREATE PROCEDURE QUERYOSOS.BI_MigrarCompra as
 BEGIN
 	INSERT INTO QUERYOSOS.BI_Compra(idSucursal,idTiempo,idUbicacion,idMaterial,importe_total_gastado,cantidad_compras)
@@ -656,7 +654,7 @@ SELECT TOP 3 bi_ubi.localidad
 FROM QUERYOSOS.BI_Envio bi_envio JOIN QUERYOSOS.BI_Ubicacion bi_ubi on bi_envio.idUbicacion=bi_ubi.idUbicacion
 GROUP BY bi_ubi.localidad
 ORDER  BY (sum(isnull(costo_total_envio,0))/sum(isnull(cantidad_envios,0)))DESC
-
+GO
 
 
 
