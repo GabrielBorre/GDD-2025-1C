@@ -47,5 +47,3 @@ El TP permitió aplicar conocimientos de **modelado de datos**, **normalización
 
 ---
 
-## Autor principal
-Gabriel Agustín Borré – [LinkedIn](https://www.linkedin.com/in/gabriel-borré-2aba30279)
