@@ -1,7 +1,6 @@
-# TP de Gestión de Datos (GDD) – 2C 2024
+# TP de Gestión de Datos (GDD) – 1C 2025
 
-**Repositorio:** [TP-GDD-2C-2024](#)  
-(*Reemplazar # con el link del repo si aplica*)
+
 
 ---
 
